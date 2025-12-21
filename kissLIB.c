@@ -23,7 +23,8 @@ int kiss_encode(kiss_instance_t *kiss, const uint8_t *data, uint16_t length)
     if (length * 2 + 2 > kiss->buffer_size) return KISS_ERR_BUFFER_OVERFLOW; // Not enough buffer space
 
     kiss->buffer[0] = KISS_FEND;
-    kiss->index = 1;
+    kiss->buffer[1] = 0x00;
+    kiss->index = 2;
 
     for (uint16_t i = 0; i < length; i++)
     {
@@ -48,7 +49,7 @@ int kiss_encode(kiss_instance_t *kiss, const uint8_t *data, uint16_t length)
     return 0; // Success
 }
 
-int kiss_decode(kiss_instance_t *kiss, uint8_t *output, uint16_t *output_length)
+int kiss_decode(kiss_instance_t *kiss, uint8_t *output, uint16_t *output_length, uint8_t *header)
 {
     if (kiss == NULL || output == NULL || output_length == NULL) return KISS_ERR_INVALID_PARAMS;
 
@@ -58,6 +59,19 @@ int kiss_decode(kiss_instance_t *kiss, uint8_t *output, uint16_t *output_length)
     for (uint16_t i = 0; i < kiss->index; i++)
     {
         uint8_t byte = kiss->buffer[i];
+
+        if(i == 0 && byte != KISS_FEND)
+            return KISS_ERR_INVALID_FRAME; // Frame must start with FEND
+
+        if(i == kiss->index - 1 && byte != KISS_FEND)
+            return KISS_ERR_INVALID_FRAME; // Frame must end with FEND
+
+        if(i == 1)
+        {
+            if(header != NULL)
+                *header = byte; // Store header byte
+            continue; // Skip header byte
+        }
 
         if (byte == KISS_FEND)
         {
@@ -93,6 +107,7 @@ int kiss_decode(kiss_instance_t *kiss, uint8_t *output, uint16_t *output_length)
         }
     }
 
+    kiss->index = out_index;
     *output_length = out_index;
     return 0; // Success
 }
@@ -153,6 +168,7 @@ int kiss_receive_frame(kiss_instance_t *kiss, uint8_t *output, uint16_t *output_
             return KISS_ERR_BUFFER_OVERFLOW; // Output buffer overflow
     }
 
+    kiss->index = out_index;
     *output_length = out_index;
     return 0; // Success
 }

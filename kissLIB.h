@@ -38,7 +38,7 @@ typedef struct
 
 int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, kiss_write_fn write, kiss_read_fn read);
 int kiss_encode(kiss_instance_t *kiss, const uint8_t *data, uint16_t length);
-int kiss_decode(kiss_instance_t *kiss, uint8_t *output, uint16_t *output_length);
+int kiss_decode(kiss_instance_t *kiss, uint8_t *output, uint16_t *output_length, uint8_t *header);
 int kiss_send_frame(kiss_instance_t *kiss);
 int kiss_receive_frame(kiss_instance_t *kiss, uint8_t *output, uint16_t *output_length);
 
