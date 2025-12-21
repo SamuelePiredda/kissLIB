@@ -1,1 +1,12 @@
+# no exe
 *.exe
+
+# no obj files
+*.o
+
+# no visual studio code directory
+.vscode/
+
+# no log or temp files
+*.log
+*.tmp
