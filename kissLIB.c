@@ -67,7 +67,7 @@ int kiss_encode(kiss_instance_t *kiss, const uint8_t *data, uint16_t length)
     if (kiss == NULL || data == NULL || length == 0) return KISS_ERR_INVALID_PARAMS;
     /* Worst-case expansion: every byte could become two bytes when escaped,
        plus two FEND bytes and one header byte. */
-    if ((uint32_t)length * 2 + 2 > kiss->buffer_size) return KISS_ERR_BUFFER_OVERFLOW;
+    if ((uint32_t)length * 2 + 3  > kiss->buffer_size) return KISS_ERR_BUFFER_OVERFLOW;
 
     /* Start of frame */
     kiss->buffer[0] = KISS_FEND;
@@ -169,7 +169,6 @@ int kiss_decode(kiss_instance_t *kiss, uint8_t *output, uint16_t *output_length,
         }
     }
 
-    kiss->index = out_index;
     *output_length = out_index;
     return 0;
 }
@@ -179,9 +178,13 @@ int kiss_decode(kiss_instance_t *kiss, uint8_t *output, uint16_t *output_length,
  * kiss_send_frame
  * ---------------
  * Send `kiss->index` bytes from `kiss->buffer` using the write callback.
- *
- * Returns:
- *  - 0 on success
+        /* Do NOT modify the instance's working buffer or its `index` here.
+         * The caller provided the encoded data in `kiss->buffer` and may rely
+         * on `kiss->index` remaining unchanged. Only return decoded data via
+         * `output` and `output_length`.
+        
+        output_length = out_index;
+        return 0;
  *  - KISS_ERR_INVALID_PARAMS if instance or callback is NULL
  */
 int kiss_send_frame(kiss_instance_t *kiss)
@@ -213,47 +216,47 @@ int kiss_send_frame(kiss_instance_t *kiss)
  *  - KISS_ERR_INVALID_FRAME for bad escape sequences
  *  - KISS_ERR_BUFFER_OVERFLOW if decoded data exceeds `kiss->buffer_size`
  */
-int kiss_receive_frame(kiss_instance_t *kiss, uint8_t *output, uint16_t *output_length)
+int kiss_receive_frame(kiss_instance_t *kiss, uint32_t maxAttempts)
 {
-    if (kiss == NULL || kiss->read == NULL || output == NULL || output_length == NULL)
+    if (kiss == NULL || kiss->read == NULL || kiss->buffer == NULL)
         return KISS_ERR_INVALID_PARAMS;
 
     uint8_t byte;
-    uint16_t out_index = 0;
-    uint8_t escape = 0;
+    kiss->index = 0;
+    int frame_started = 0;
 
-    for (int i = 0; i < kiss->buffer_size; i++)
+    for(int attempt = 0; attempt < maxAttempts; attempt++)
     {
         kiss->read(&byte, 1);
 
-        /* Leading FENDs are ignored; a FEND after data marks end-of-frame */
+        if (!frame_started)
+        {
+            if (byte == KISS_FEND)
+            {
+                kiss->buffer[kiss->index++] = byte;
+                frame_started = 1;
+            }
+            continue; 
+        }
+
+        if (kiss->index >= kiss->buffer_size)
+        {
+            return KISS_ERR_BUFFER_OVERFLOW;
+        }
+        
+        kiss->buffer[kiss->index++] = byte;
+
         if (byte == KISS_FEND)
         {
-            if (out_index > 0) break; /* finished */
-            else continue; /* skip leading delimiter */
-        }
-        else if (byte == KISS_FESC)
-        {
-            escape = 1;
-            continue;
-        }
-        else
-        {
-            if (escape)
+            if (kiss->index == 2) 
             {
-                if (byte == KISS_TFEND) output[out_index++] = KISS_FEND;
-                else if (byte == KISS_TFESC) output[out_index++] = KISS_FESC;
-                else return KISS_ERR_INVALID_FRAME;
-                escape = 0;
+                kiss->index = 1; 
             }
-            else output[out_index++] = byte;
+            else 
+            {
+                return 0;
+            }
         }
-
-        if (out_index >= kiss->buffer_size) return KISS_ERR_BUFFER_OVERFLOW;
     }
-
-    kiss->index = out_index;
-    *output_length = out_index;
-    return 0;
 }
 

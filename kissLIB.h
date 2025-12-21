@@ -146,7 +146,13 @@ int kiss_send_frame(kiss_instance_t *kiss);
  *
  * Returns: 0 on success or a KISS_ERR_* on error.
  */
-int kiss_receive_frame(kiss_instance_t *kiss, uint8_t *output, uint16_t *output_length);
+int kiss_receive_frame(kiss_instance_t *kiss, uint32_t maxAttempts);
+
+
+
+
+
+
 
 
 

@@ -17,6 +17,20 @@ void read(uint8_t *byte, uint16_t count)
     }
 }
 
+void printKissStatus(kiss_instance_t *kiss)
+{
+    printf("KISS Buffer Size: %d\n", kiss->buffer_size);
+    printf("KISS Index: %d\n", kiss->index);
+    printf("KISS Buffer Content: (at %d)\n", kiss->buffer);
+    for (uint16_t i = 0; i < kiss->index; i++)
+    {
+        printf("%02X ", kiss->buffer[i]);
+    }
+    printf("\n----------\n");
+}
+
+
+
 /** Example main function demonstrating KISS receive and decode.
  */
 int main()
@@ -29,12 +43,41 @@ int main()
     // KISS header storage
     uint8_t header = 0;
 
+    uint8_t error = 0;
+
     // Initialize KISS instance
-    kiss_init(&kiss, buffer, (uint16_t)sizeof(buffer), write, read);
+    error =kiss_init(&kiss, buffer, (uint16_t)sizeof(buffer), write, read);
+    if(error != 0)
+    {
+        printf("KISS initialization failed with error: %d\n", error);
+        return -1;
+    }
+
+
+    printKissStatus(&kiss);
+
     // Receive a KISS frame
-    kiss_receive_frame(&kiss, buffer, &length);
+    error = kiss_receive_frame(&kiss, (uint32_t)sizeof(buffer));
+    if(error != 0)
+    {
+        printf("KISS receive frame failed with error: %d\n", error);
+        return -1;
+    }
+
+
+    printKissStatus(&kiss);
+
     // Decode the received KISS frame
-    kiss_decode(&kiss, buffer, &length, &header);
+    error = kiss_decode(&kiss, buffer, &length, &header);
+    if(error != 0)
+    {
+        printf("KISS decode failed with error: %d\n", error);
+        return -1;
+    }
+
+    printKissStatus(&kiss);
+
+
     // Print the decoded data length and header
     printf("Decoded data (%d bytes): ", length);
     printf("Header: %02X\n", header);
@@ -44,6 +87,7 @@ int main()
         printf("%c", (char)buffer[i]);
 
     printf("\n");
+    printKissStatus(&kiss);
 
     return 0;
 }
