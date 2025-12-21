@@ -30,12 +30,14 @@ int main()
 
     kiss_decode(&kiss, buffer, &length, &header);
 
+
     printf("Decoded data (%d bytes): ", length);
+
     printf("Header: %02X\n", header);
+
     for (uint16_t i = 0; i < length; i++)
-    {
         printf("%c", (char)buffer[i]);
-    }
+
     printf("\n");
 
     return 0;
