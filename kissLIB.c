@@ -26,12 +26,14 @@
  *  - 0 on success
  *  - KISS_ERR_INVALID_PARAMS if inputs are invalid
  */
-int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, kiss_write_fn write, kiss_read_fn read)
+int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, uint8_t tx_delay, uint32_t BaudRate, kiss_write_fn write, kiss_read_fn read)
 {
-    if (kiss == NULL || buffer == NULL || buffer_size == 0 || write == NULL || read == NULL)
+    if (kiss == NULL || buffer == NULL || buffer_size == 0 || write == NULL || read == NULL || BaudRate == 0 || tx_delay == 0)
         return KISS_ERR_INVALID_PARAMS;
 
     kiss->buffer = buffer;
+    kiss->TXdelay = tx_delay;
+    kiss->speed = BaudRate;
     kiss->buffer_size = buffer_size;
     kiss->index = 0;
     kiss->write = write;
@@ -62,16 +64,23 @@ int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, kiss
  *  - KISS_ERR_INVALID_PARAMS for bad inputs
  *  - KISS_ERR_BUFFER_OVERFLOW if the provided working buffer is too small
  */
-int kiss_encode(kiss_instance_t *kiss, const uint8_t *data, uint16_t length)
+int kiss_encode(kiss_instance_t *kiss, const uint8_t *data, uint16_t length, const uint8_t *header)
 {
     if (kiss == NULL || data == NULL || length == 0) return KISS_ERR_INVALID_PARAMS;
     /* Worst-case expansion: every byte could become two bytes when escaped,
        plus two FEND bytes and one header byte. */
     if ((uint32_t)length * 2 + 3  > kiss->buffer_size) return KISS_ERR_BUFFER_OVERFLOW;
 
-    /* Start of frame */
+    /*  Start of frame with header
+        if header is NULL use default 0x00 header for data
+        if header is not NULL use the provided header value from the caller
+    */
     kiss->buffer[0] = KISS_FEND;
-    kiss->buffer[1] = 0x00; /* default header */
+    if(header != NULL)
+        kiss->buffer[1] = *header;
+    else
+        kiss->buffer[1] = 0x00; /* default header */
+
     kiss->index = 2;
 
     for (uint16_t i = 0; i < length; i++)
@@ -170,6 +179,7 @@ int kiss_decode(kiss_instance_t *kiss, uint8_t *output, uint16_t *output_length,
     }
 
     *output_length = out_index;
+    kiss->index = 0; /* reset index after decoding */
     return 0;
 }
 
@@ -260,3 +270,117 @@ int kiss_receive_frame(kiss_instance_t *kiss, uint32_t maxAttempts)
     }
 }
 
+
+/**
+ * kiss_set_TXdelay
+ * -----------------
+ * Set the TX delay on the KISS device by sending a control frame.
+ * The delay is specified in milliseconds (10ms to 2550ms).
+ * Parameters:
+ * - kiss: initialized instance.
+ * - tx_delay: delay in milliseconds (10 to 2550).
+ * Returns:
+ * - 0 on success
+ * - KISS_ERR_INVALID_PARAMS if inputs are invalid
+ */
+int kiss_set_TXdelay(kiss_instance_t *kiss, uint8_t tx_delay)
+{
+    if (kiss == NULL || tx_delay == 0)
+        return KISS_ERR_INVALID_PARAMS;
+
+    kiss->TXdelay = tx_delay*10;
+
+    kiss->buffer[0] = KISS_FEND;
+    kiss->buffer[1] = KISS_HEADER_TX_DELAY;
+    kiss->buffer[2] = tx_delay;
+    kiss->buffer[3] = KISS_FEND;
+    kiss->index = 4;
+
+    kiss_send_frame(kiss);
+
+    return 0;
+}
+
+/** 
+ * kiss_set_speed
+ * -----------------   
+ * Set the speed on the KISS device by sending a control frame.
+ * The speed is specified in bits per second.
+ * Parameters:
+ * - kiss: initialized instance.
+ * - BaudRate: speed in bits per second.
+ * Returns:
+ * - 0 on success
+ * - KISS_ERR_INVALID_PARAMS if inputs are invalid
+ */
+int kiss_set_speed(kiss_instance_t *kiss, uint32_t BaudRate)
+{
+    if (kiss == NULL || BaudRate == 0)
+        return KISS_ERR_INVALID_PARAMS;
+
+    kiss->speed = BaudRate;
+
+    kiss->buffer[0] = KISS_FEND;
+    kiss->buffer[1] = KISS_HEADER_SPEED;
+    kiss->buffer[2] = (uint8_t)(BaudRate & 0xFF);
+    kiss->buffer[3] = (uint8_t)((BaudRate >> 8) & 0xFF);
+    kiss->buffer[4] = (uint8_t)((BaudRate >> 16) & 0xFF);
+    kiss->buffer[5] = (uint8_t)((BaudRate >> 24) & 0xFF);
+    kiss->buffer[6] = KISS_FEND;
+    kiss->index = 7;
+
+    kiss_send_frame(kiss);
+
+    return 0;
+}
+
+/**
+ * kiss_send_ack
+ * -----------------   
+ * Send an ACK control frame.
+ * Parameters:
+ * - kiss: initialized instance.
+ * Returns:
+ * - 0 on success
+ * - KISS_ERR_INVALID_PARAMS if inputs are invalid
+ */
+int kiss_send_ack(kiss_instance_t *kiss)
+{
+    if (kiss == NULL)
+        return KISS_ERR_INVALID_PARAMS;
+
+    kiss->buffer[0] = KISS_FEND;
+    kiss->buffer[1] = KISS_HEADER_ACK;
+    kiss->buffer[2] = KISS_FEND;
+    kiss->index = 3;
+
+    kiss_send_frame(kiss);
+
+    return 0;
+}
+
+
+/**
+ * kiss_send_nack
+ * -----------------   
+ * Send a NACK control frame.
+ * Parameters:
+ * - kiss: initialized instance.
+ * Returns:
+ * - 0 on success
+ * - KISS_ERR_INVALID_PARAMS if inputs are invalid
+ */
+int kiss_send_nack(kiss_instance_t *kiss)
+{
+    if (kiss == NULL)
+        return KISS_ERR_INVALID_PARAMS;
+
+    kiss->buffer[0] = KISS_FEND;
+    kiss->buffer[1] = KISS_HEADER_NACK;
+    kiss->buffer[2] = KISS_FEND;
+    kiss->index = 3;
+
+    kiss_send_frame(kiss);
+
+    return 0;
+}

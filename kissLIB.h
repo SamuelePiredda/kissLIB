@@ -36,6 +36,27 @@ extern "C" {
 #define KISS_ERR_BUFFER_OVERFLOW 3
 
 
+
+/** KISS header byte values
+ *
+ * The KISS header byte follows the initial FEND in a frame and indicates
+ * the type of frame (data or control) and the port number.
+ * - KISS_HEADER_DATA: data frame (port 0) for normal payloads.
+ * - KISS_HEADER_CONTROL_TX_DELAY: control frame to set TX delay. 0x10
+ * - KISS_HEADER_CONTROL_SPEED: control frame to set baud rate. 0x60
+ * - KISS_HEADER_PING: control frame for ping requests. 0x80
+ * - KISS_HEADER_ACK: control frame for acknowledgments. 0xA0
+ * - KISS_HEADER_NACK: control frame for negative acknowledgments. 0xC0
+ * - Additional control frame types may be defined in the future.
+ */
+#define KISS_HEADER_DATA(port) ((port & 0x0F) << 4 | 0x00)
+#define KISS_HEADER_TX_DELAY 0x10
+#define KISS_HEADER_SPEED 0x60
+#define KISS_HEADER_PING 0x80
+#define KISS_HEADER_ACK 0xA0
+#define KISS_HEADER_NACK 0xC0
+
+
 /** Transport callback: write a single byte to the physical transport.
  *
  * Implementations should block or buffer as appropriate for the platform.
@@ -73,6 +94,8 @@ typedef struct
     uint8_t *buffer;
     uint16_t buffer_size;
     uint16_t index;
+    uint8_t TXdelay;
+    uint32_t speed;
     kiss_write_fn write;
     kiss_read_fn read;
 } kiss_instance_t;
@@ -89,7 +112,7 @@ typedef struct
  *
  * Returns: 0 on success or a KISS_ERR_* code on failure.
  */
-int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, kiss_write_fn write, kiss_read_fn read);
+int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, uint8_t TXdelay, uint32_t BaudRate, kiss_write_fn write, kiss_read_fn read);
 
 
 /** Encode `length` bytes from `data` into the instance working buffer.
@@ -105,7 +128,7 @@ int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, kiss
  *
  * Returns: 0 on success, or an error code (invalid params or buffer overflow).
  */
-int kiss_encode(kiss_instance_t *kiss, const uint8_t *data, uint16_t length);
+int kiss_encode(kiss_instance_t *kiss, const uint8_t *data, uint16_t length, const uint8_t *header);
 
 
 /** Decode a frame stored in `kiss->buffer` into `output`.
@@ -150,8 +173,60 @@ int kiss_receive_frame(kiss_instance_t *kiss, uint32_t maxAttempts);
 
 
 
+/**
+ * kiss_set_TXdelay
+ * -----------------
+ * Set the TX delay on the KISS device by sending a control frame.
+ * The delay is specified in milliseconds (10ms to 2550ms).
+ * Parameters:
+ * - kiss: initialized instance.
+ * - tx_delay: delay in milliseconds (10 to 2550).
+ * Returns:
+ * - 0 on success
+ * - KISS_ERR_INVALID_PARAMS if inputs are invalid
+ */
+int kiss_set_TXdelay(kiss_instance_t *kiss, uint8_t tx_delay);
+
+/** 
+ * kiss_set_speed
+ * -----------------   
+ * Set the speed on the KISS device by sending a control frame.
+ * The speed is specified in bits per second.
+ * Parameters:
+ * - kiss: initialized instance.
+ * - BaudRate: speed in bits per second.
+ * Returns:
+ * - 0 on success
+ * - KISS_ERR_INVALID_PARAMS if inputs are invalid
+ */
+int kiss_set_speed(kiss_instance_t *kiss, uint32_t BaudRate);
 
 
+
+/**
+ * kiss_send_ack
+ * -----------------   
+ * Send an ACK control frame.
+ * Parameters:
+ * - kiss: initialized instance.
+ * Returns:
+ * - 0 on success
+ * - KISS_ERR_INVALID_PARAMS if inputs are invalid
+ */
+int kiss_send_ack(kiss_instance_t *kiss);
+
+
+/**
+ * kiss_send_nack
+ * -----------------   
+ * Send a NACK control frame.
+ * Parameters:
+ * - kiss: initialized instance.
+ * Returns:
+ * - 0 on success
+ * - KISS_ERR_INVALID_PARAMS if inputs are invalid
+ */
+int kiss_send_nack(kiss_instance_t *kiss);
 
 
 
