@@ -10,7 +10,7 @@ typedef void (*kiss_read_fn)(kiss_instance_t *kiss, uint8_t *buffer, size_t data
 ```
 
 
-This is the struct containing the instance of the kiss communication protocol: the buffer array; buffer size; the current index or current amount of valid data in the buffer; the transmission delay after receiving; the baud rate if needed; write/read callback functions; the current status of the link; context pointer with all the information about the physical layer.
+This is the struct containing the instance of the kiss communication protocol: the buffer array; buffer size; the current index or current amount of valid data in the buffer; the transmission delay after receiving; write/read callback functions; the current status of the link; context pointer with all the information about the physical layer.
 ```C
 typedef struct 
 {
@@ -18,7 +18,6 @@ typedef struct
     uint16_t buffer_size;
     size_t index;
     uint8_t TXdelay;
-    uint32_t speed;
     kiss_write_fn write;
     kiss_read_fn read;
     uint8_t Status;

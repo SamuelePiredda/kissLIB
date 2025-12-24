@@ -128,7 +128,6 @@ struct kiss_instance_t {
     uint16_t buffer_size;
     size_t index;
     uint8_t TXdelay;
-    uint32_t speed;
     kiss_write_fn write;
     kiss_read_fn read;
     uint8_t Status;
@@ -145,13 +144,14 @@ struct kiss_instance_t {
  *  - kiss: pointer to an instance structure to initialize.
  *  - buffer: caller-provided working buffer (must remain valid).
  *  - buffer_size: size of `buffer` in bytes.
+ *  - TXdelay: transmit delay in milliseconds (10 to 2550).
  *  - write: transport write callback.
  *  - read: transport read callback.
  *  - context: user-defined context passed to read/write callbacks.
  *
  * Returns: 0 on success or a KISS_ERR_* code on failure.
  */
-int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, uint8_t TXdelay, uint32_t BaudRate, kiss_write_fn write, kiss_read_fn read, void* context);
+int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, uint8_t TXdelay, kiss_write_fn write, kiss_read_fn read, void* context);
 
 
 /** Encode `length` bytes from `data` into the instance working buffer.
@@ -164,6 +164,7 @@ int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, uint
  *  - kiss: initialized instance.
  *  - data: payload to encode.
  *  - length: payload length in bytes.
+ *  - header: KISS header byte to use.
  *
  * Returns: 0 on success, or an error code (invalid params or buffer overflow).
  */

@@ -40,7 +40,6 @@ void printKissStatus(kiss_instance_t *kiss)
     printf("KISS Index: %d\n", kiss->index);
     printf("KISS Buffer Content: (at %d)\n", kiss->buffer);
     printf("KISS TX Delay: %d\n", kiss->TXdelay);
-    printf("KISS Speed: %d\n", kiss->speed);
     for (uint16_t i = 0; i < kiss->index; i++)
     {
         printf("%02X ", kiss->buffer[i]);
@@ -133,7 +132,7 @@ int main()
     uint8_t buffer[MAX_BUFFER_SIZE];
 
     kiss_instance_t kiss;
-    kiss_init(&kiss, buffer, MAX_BUFFER_SIZE, 1, 9600, write, read, hSerial);
+    kiss_init(&kiss, buffer, MAX_BUFFER_SIZE, 1, write, read, hSerial);
 
 
     char str[] = "Hello,World!";

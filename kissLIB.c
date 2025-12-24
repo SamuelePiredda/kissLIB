@@ -26,15 +26,14 @@
  *  - 0 on success
  *  - KISS_ERR_INVALID_PARAMS if inputs are invalid
  */
-int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, uint8_t tx_delay, uint32_t BaudRate, kiss_write_fn write, kiss_read_fn read, void* context)
+int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, uint8_t tx_delay, kiss_write_fn write, kiss_read_fn read, void* context)
 {
-    if (kiss == NULL || buffer == NULL || buffer_size == 0 || write == NULL || read == NULL || BaudRate == 0 || tx_delay == 0)
+    if (kiss == NULL || buffer == NULL || buffer_size == 0 || write == NULL || read == NULL || tx_delay == 0)
         return KISS_ERR_INVALID_PARAMS;
 
     kiss->buffer = buffer;
     kiss->context = context;
     kiss->TXdelay = tx_delay;
-    kiss->speed = BaudRate;
     kiss->buffer_size = buffer_size;
     kiss->index = 0;
     kiss->write = write;
@@ -420,8 +419,6 @@ int kiss_set_speed(kiss_instance_t *kiss, uint32_t BaudRate)
 {
     if (kiss == NULL || BaudRate == 0)
         return KISS_ERR_INVALID_PARAMS;
-
-    kiss->speed = BaudRate;
 
     kiss->buffer[0] = KISS_FEND;
     kiss->buffer[1] = KISS_HEADER_SPEED;

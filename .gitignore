@@ -10,3 +10,6 @@
 # no log or temp files
 *.log
 *.tmp
+*.json
+
+output.txt
