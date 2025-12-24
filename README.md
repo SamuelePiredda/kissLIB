@@ -8,6 +8,8 @@ These are the two callback functions that the user must implement for writing an
 typedef void (*kiss_write_fn)(kiss_instance_t *kiss, uint8_t *data, size_t length);
 typedef void (*kiss_read_fn)(kiss_instance_t *kiss, uint8_t *buffer, size_t dataLen, size_t *read);
 ```
+Inside the kiss_instance_t structure you will find the pointer to the physical layer handler so that you can use whatever interface to read from and write to.
+
 
 
 This is the struct containing the instance of the kiss communication protocol: the buffer array; buffer size; the current index or current amount of valid data in the buffer; the transmission delay after receiving; write/read callback functions; the current status of the link; context pointer with all the information about the physical layer.
