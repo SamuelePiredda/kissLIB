@@ -5,8 +5,8 @@ small and portable KISS library for C that can be used for embedded.
 
 These are the two callback functions that the user must implement for writing and receiving, for whataver physical layer (I2C, UART etc..)
 ``` C
-typedef void (*kiss_write_fn)(void *context, uint8_t *data, size_t length);
-typedef void (*kiss_read_fn)(void *context, uint8_t *buffer, size_t dataLen, size_t *read);
+typedef void (*kiss_write_fn)(kiss_instance_t *kiss, uint8_t *data, size_t length);
+typedef void (*kiss_read_fn)(kiss_instance_t *kiss, uint8_t *buffer, size_t dataLen, size_t *read);
 ```
 
 

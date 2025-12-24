@@ -79,13 +79,19 @@ extern "C" {
 #define KISS_HEADER_NACK 0xC0
 
 
+
+
+typedef struct kiss_instance_t kiss_instance_t;
+
+
+
 /** Transport callback: write a single byte to the physical transport.
  *
  * Implementations should block or buffer as appropriate for the platform.
  * Parameters:
  *  - byte: data byte to send.
  */
-typedef int (*kiss_write_fn)(void *context, uint8_t *data, size_t length);
+typedef int (*kiss_write_fn)(kiss_instance_t *kiss, uint8_t *data, size_t length);
 
 /** Transport callback: read `length` bytes into `data` from transport.
  *
@@ -95,7 +101,10 @@ typedef int (*kiss_write_fn)(void *context, uint8_t *data, size_t length);
  *  - data: destination buffer.
  *  - length: number of bytes requested.
  */
-typedef int (*kiss_read_fn)(void *context, uint8_t *buffer, size_t dataLen, size_t *read);
+typedef int (*kiss_read_fn)(kiss_instance_t *kiss, uint8_t *buffer, size_t dataLen, size_t *read);
+
+
+
 
 
 /** KISS instance structure
@@ -114,8 +123,7 @@ typedef int (*kiss_read_fn)(void *context, uint8_t *buffer, size_t dataLen, size
  *  - `index` represents a length (number of bytes stored), not a stream
  *    file offset.
  */
-typedef struct 
-{
+struct kiss_instance_t {
     uint8_t *buffer;
     uint16_t buffer_size;
     size_t index;
@@ -125,7 +133,10 @@ typedef struct
     kiss_read_fn read;
     uint8_t Status;
     void *context;
-} kiss_instance_t;
+};
+
+
+
 
 
 /** Initialize a `kiss_instance_t`.

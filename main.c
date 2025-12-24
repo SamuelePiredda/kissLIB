@@ -9,11 +9,11 @@ HANDLE hSerial;
 
 
 /* Write function for KISS framing */
-int write(void *context, uint8_t *data, size_t dataLen)
+int write(kiss_instance_t *kiss, uint8_t *data, size_t dataLen)
 {
     DWORD bytesWritten;
 
-    if(!WriteFile(context, data, dataLen, &bytesWritten, NULL))
+    if(!WriteFile(kiss->context, data, dataLen, &bytesWritten, NULL))
     {
         fprintf(stderr, "Error writing to serial port\n");
         return 1;
@@ -23,9 +23,9 @@ int write(void *context, uint8_t *data, size_t dataLen)
 }
 
 /* Read function for KISS framing */
-int read(void *context, uint8_t *buffer, size_t dataLen, size_t *read)
+int read(kiss_instance_t *kiss, uint8_t *buffer, size_t dataLen, size_t *read)
 {
-    if(!ReadFile(context, buffer, dataLen, (LPDWORD)read, NULL))
+    if(!ReadFile(kiss->context, buffer, dataLen, (LPDWORD)read, NULL))
     {
         fprintf(stderr, "Error reading from serial port\n");
         return 1;

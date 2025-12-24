@@ -203,7 +203,7 @@ int kiss_send_frame(kiss_instance_t *kiss)
         return KISS_ERR_INVALID_PARAMS;
 
     int err = 0;
-    err = kiss->write(kiss->context, kiss->buffer, kiss->index);
+    err = kiss->write(kiss, kiss->buffer, kiss->index);
     if(err == 0)
     {
         kiss->Status = KISS_TRANSMITTED;
@@ -278,7 +278,7 @@ int kiss_receive_frame(kiss_instance_t *kiss, uint32_t maxAttempts)
     // Read bytes until a full frame is received
     for(int attempt = 0; attempt < maxAttempts; attempt++)
     {
-        err =kiss->read(kiss->context, &byte, kiss->buffer_size, &(kiss->index));
+        err = kiss->read(kiss, &byte, kiss->buffer_size, &(kiss->index));
 
         if(err != 0)
         {
