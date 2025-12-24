@@ -26,12 +26,13 @@
  *  - 0 on success
  *  - KISS_ERR_INVALID_PARAMS if inputs are invalid
  */
-int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, uint8_t tx_delay, uint32_t BaudRate, kiss_write_fn write, kiss_read_fn read)
+int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, uint8_t tx_delay, uint32_t BaudRate, kiss_write_fn write, kiss_read_fn read, void* context)
 {
     if (kiss == NULL || buffer == NULL || buffer_size == 0 || write == NULL || read == NULL || BaudRate == 0 || tx_delay == 0)
         return KISS_ERR_INVALID_PARAMS;
 
     kiss->buffer = buffer;
+    kiss->context = context;
     kiss->TXdelay = tx_delay;
     kiss->speed = BaudRate;
     kiss->buffer_size = buffer_size;
@@ -196,15 +197,53 @@ int kiss_decode(kiss_instance_t *kiss, uint8_t *output, uint16_t *output_length,
         return 0;
  *  - KISS_ERR_INVALID_PARAMS if instance or callback is NULL
  */
-int kiss_send_frame(kiss_instance_t *kiss, void *context)
+int kiss_send_frame(kiss_instance_t *kiss)
 {
     if (kiss == NULL || kiss->write == NULL) 
         return KISS_ERR_INVALID_PARAMS;
 
-    kiss->write(context, kiss->buffer, kiss->index);
+    int err = 0;
+    err = kiss->write(kiss->context, kiss->buffer, kiss->index);
+    if(err == 0)
+    {
+        kiss->Status = KISS_TRANSMITTED;
+        return 0;
+    }
+    else
+    {
+        kiss->Status = KISS_ERROR_STATE;
+        return err;
+    }
+}
 
-    kiss->Status = KISS_TRANSMITTED;
-    return 0;
+
+/**
+ * kiss_encode_and_send
+ * ----------------------
+ * Encode `length` bytes from `data` into the instance working buffer and send it.
+ * * Behavior:
+ *  - Calls kiss_encode to encode the data into kiss->buffer.
+ * - Calls kiss_send_frame to send the encoded frame.
+ * Parameters:
+ * - kiss: initialized instance.
+ * - data: payload to encode.
+ * - length: payload length in bytes.
+ * - header: KISS header byte to use.
+ * Returns: 
+ * - 0 on success
+ * - KISS_ERR_INVALID_PARAMS for bad inputs
+ * - KISS_ERR_BUFFER_OVERFLOW if the provided working buffer is too small
+ * - generic error code from kiss_send_frame on failure
+ */
+int kiss_encode_and_send(kiss_instance_t *kiss, const uint8_t *data, uint16_t length, const uint8_t header)
+{
+    int err = 0;
+    err = kiss_encode(kiss, data, length, header);
+    if(err != 0)
+    {
+        return err;
+    }
+    return kiss_send_frame(kiss);
 }
 
 
@@ -224,7 +263,7 @@ int kiss_send_frame(kiss_instance_t *kiss, void *context)
  *  - KISS_ERR_INVALID_FRAME for bad escape sequences
  *  - KISS_ERR_BUFFER_OVERFLOW if decoded data exceeds `kiss->buffer_size`
  */
-int kiss_receive_frame(kiss_instance_t *kiss, void* context, uint32_t maxAttempts)
+int kiss_receive_frame(kiss_instance_t *kiss, uint32_t maxAttempts)
 {
     // Validate inputs
     if (kiss == NULL || kiss->read == NULL || kiss->buffer == NULL)
@@ -234,11 +273,18 @@ int kiss_receive_frame(kiss_instance_t *kiss, void* context, uint32_t maxAttempt
     kiss->index = 0;
     kiss->Status = KISS_RECEIVING;
     int frame_started = 0;
+    int err = 0;
 
     // Read bytes until a full frame is received
     for(int attempt = 0; attempt < maxAttempts; attempt++)
     {
-        kiss->read(context, &byte, kiss->buffer_size, &(kiss->index));
+        err =kiss->read(kiss->context, &byte, kiss->buffer_size, &(kiss->index));
+
+        if(err != 0)
+        {
+            kiss->Status = KISS_ERROR_STATE;
+            return err;
+        }
 
         kiss->index = 0;
         
@@ -284,7 +330,49 @@ int kiss_receive_frame(kiss_instance_t *kiss, void* context, uint32_t maxAttempt
 
         return KISS_ERR_INVALID_FRAME;
     }
+
+    return KISS_ERR_NO_DATA_RECEIVED;
 }
+
+
+
+
+/** 
+ * kiss_receive_and_decode
+ * -----------------------
+ * Receive a KISS frame and decode it into `output`.
+ *
+ * Parameters:
+ *  - kiss: instance with working buffer and `read` callback.
+ *  - output: buffer to receive decoded payload bytes.
+ *  - output_length: pointer to receive number of decoded bytes.
+ *  - maxAttempts: maximum number of read attempts before giving up.
+ *  - header: optional pointer to receive the KISS header byte (may be NULL).
+ *
+ * Returns:
+ * - 0 on success
+ * - KISS_ERR_INVALID_PARAMS for bad inputs
+ * - KISS_ERR_INVALID_FRAME for bad escape sequences
+ * - KISS_ERR_BUFFER_OVERFLOW if decoded data exceeds `kiss->buffer_size`
+ * - KISS_ERR_NO_DATA_RECEIVED if no complete frame is received within maxAttempts
+ * - generic error code from transport read function on failure
+ */
+int kiss_receive_and_decode(kiss_instance_t *kiss, uint8_t *output, uint16_t *output_length, uint32_t maxAttempts, uint8_t *header)
+{
+    int err = 0;
+    err = kiss_receive_frame(kiss, maxAttempts);
+    if(err != 0)
+    {
+        return err;
+    }       
+    
+    return kiss_decode(kiss, output, output_length, header);
+}
+
+
+
+
+
 
 
 /**
@@ -299,7 +387,7 @@ int kiss_receive_frame(kiss_instance_t *kiss, void* context, uint32_t maxAttempt
  * - 0 on success
  * - KISS_ERR_INVALID_PARAMS if inputs are invalid
  */
-int kiss_set_TXdelay(kiss_instance_t *kiss, void *context, uint8_t tx_delay)
+int kiss_set_TXdelay(kiss_instance_t *kiss, uint8_t tx_delay)
 {
     if (kiss == NULL || tx_delay == 0)
         return KISS_ERR_INVALID_PARAMS;
@@ -313,9 +401,7 @@ int kiss_set_TXdelay(kiss_instance_t *kiss, void *context, uint8_t tx_delay)
     kiss->index = 4;
     kiss->Status = KISS_TRANSMITTING;
 
-    kiss_send_frame(kiss, context);
-
-    return 0;
+    return kiss_send_frame(kiss);
 }
 
 /** 
@@ -330,7 +416,7 @@ int kiss_set_TXdelay(kiss_instance_t *kiss, void *context, uint8_t tx_delay)
  * - 0 on success
  * - KISS_ERR_INVALID_PARAMS if inputs are invalid
  */
-int kiss_set_speed(kiss_instance_t *kiss, void *context, uint32_t BaudRate)
+int kiss_set_speed(kiss_instance_t *kiss, uint32_t BaudRate)
 {
     if (kiss == NULL || BaudRate == 0)
         return KISS_ERR_INVALID_PARAMS;
@@ -347,9 +433,7 @@ int kiss_set_speed(kiss_instance_t *kiss, void *context, uint32_t BaudRate)
     kiss->index = 7;
     kiss->Status = KISS_TRANSMITTING;
 
-    kiss_send_frame(kiss, context);
-
-    return 0;
+    return kiss_send_frame(kiss);
 }
 
 /**
@@ -362,7 +446,7 @@ int kiss_set_speed(kiss_instance_t *kiss, void *context, uint32_t BaudRate)
  * - 0 on success
  * - KISS_ERR_INVALID_PARAMS if inputs are invalid
  */
-int kiss_send_ack(kiss_instance_t *kiss, void *context)
+int kiss_send_ack(kiss_instance_t *kiss)
 {
     if (kiss == NULL)
         return KISS_ERR_INVALID_PARAMS;
@@ -373,9 +457,7 @@ int kiss_send_ack(kiss_instance_t *kiss, void *context)
     kiss->index = 3;
     kiss->Status = KISS_TRANSMITTING;
 
-    kiss_send_frame(kiss, context);
-
-    return 0;
+    return kiss_send_frame(kiss);
 }
 
 
@@ -389,7 +471,7 @@ int kiss_send_ack(kiss_instance_t *kiss, void *context)
  * - 0 on success
  * - KISS_ERR_INVALID_PARAMS if inputs are invalid
  */
-int kiss_send_nack(kiss_instance_t *kiss, void *context)
+int kiss_send_nack(kiss_instance_t *kiss)
 {
     if (kiss == NULL)
         return KISS_ERR_INVALID_PARAMS;
@@ -400,7 +482,30 @@ int kiss_send_nack(kiss_instance_t *kiss, void *context)
     kiss->index = 3;
     kiss->Status = KISS_TRANSMITTING;
 
-    kiss_send_frame(kiss, context);
+    return kiss_send_frame(kiss);
+}
 
-    return 0;
+
+/** 
+ * kiss_send_ping
+ * -----------------
+ * Send a PING control frame.
+ * Parameters:
+ * - kiss: initialized instance.
+ * Returns:
+ * - 0 on success
+ * - KISS_ERR_INVALID_PARAMS if inputs are invalid
+ */
+int kiss_send_ping(kiss_instance_t *kiss)
+{
+    if (kiss == NULL)
+        return KISS_ERR_INVALID_PARAMS;
+
+    kiss->buffer[0] = KISS_FEND;
+    kiss->buffer[1] = KISS_HEADER_PING;
+    kiss->buffer[2] = KISS_FEND;
+    kiss->index = 3;
+    kiss->Status = KISS_TRANSMITTING;
+
+    return kiss_send_frame(kiss);
 }

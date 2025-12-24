@@ -9,7 +9,7 @@ extern "C" {
 #include <stdlib.h>
 #include <stddef.h>
 
-#define KISSLIB_VERSION "1.0.0"
+#define KISSLIB_VERSION "2.0.0"
 
 /** KISS protocol special byte values
  *
@@ -36,7 +36,7 @@ extern "C" {
 #define KISS_ERR_INVALID_PARAMS 1
 #define KISS_ERR_INVALID_FRAME 2
 #define KISS_ERR_BUFFER_OVERFLOW 3
-
+#define KISS_ERR_NO_DATA_RECEIVED 4
 
 
 /**
@@ -54,6 +54,7 @@ extern "C" {
 #define KISS_RECEIVING 0x03         // Frame is ready to be received
 #define KISS_RECEIVED 0x04          // Frame has been received
 #define KISS_RECEIVED_ERROR 0x05    // Frame received error
+#define KISS_ERROR_STATE 0x06      // General error state
 
 
 
@@ -84,7 +85,7 @@ extern "C" {
  * Parameters:
  *  - byte: data byte to send.
  */
-typedef void (*kiss_write_fn)(void *context, uint8_t *data, size_t length);
+typedef int (*kiss_write_fn)(void *context, uint8_t *data, size_t length);
 
 /** Transport callback: read `length` bytes into `data` from transport.
  *
@@ -94,7 +95,7 @@ typedef void (*kiss_write_fn)(void *context, uint8_t *data, size_t length);
  *  - data: destination buffer.
  *  - length: number of bytes requested.
  */
-typedef void (*kiss_read_fn)(void *context, uint8_t *buffer, size_t dataLen, size_t *read);
+typedef int (*kiss_read_fn)(void *context, uint8_t *buffer, size_t dataLen, size_t *read);
 
 
 /** KISS instance structure
@@ -123,6 +124,7 @@ typedef struct
     kiss_write_fn write;
     kiss_read_fn read;
     uint8_t Status;
+    void *context;
 } kiss_instance_t;
 
 
@@ -134,10 +136,11 @@ typedef struct
  *  - buffer_size: size of `buffer` in bytes.
  *  - write: transport write callback.
  *  - read: transport read callback.
+ *  - context: user-defined context passed to read/write callbacks.
  *
  * Returns: 0 on success or a KISS_ERR_* code on failure.
  */
-int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, uint8_t TXdelay, uint32_t BaudRate, kiss_write_fn write, kiss_read_fn read);
+int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, uint8_t TXdelay, uint32_t BaudRate, kiss_write_fn write, kiss_read_fn read, void* context);
 
 
 /** Encode `length` bytes from `data` into the instance working buffer.
@@ -154,6 +157,10 @@ int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, uint
  * Returns: 0 on success, or an error code (invalid params or buffer overflow).
  */
 int kiss_encode(kiss_instance_t *kiss, const uint8_t *data, uint16_t length, const uint8_t header);
+
+
+
+
 
 
 /** Decode a frame stored in `kiss->buffer` into `output`.
@@ -174,9 +181,41 @@ int kiss_decode(kiss_instance_t *kiss, uint8_t *output, uint16_t *output_length,
  * The function sends `kiss->index` bytes from `kiss->buffer`. The buffer
  * must already contain an encoded frame (e.g. created by `kiss_encode`).
  *
- * Returns: 0 on success or KISS_ERR_INVALID_PARAMS.
+ * Returns: 
+ * - 0 on success 
+ * - KISS_ERR_INVALID_PARAMS if inputs are invalid
+ * - generic error code from transport write function on failure
  */
-int kiss_send_frame(kiss_instance_t *kiss, void *context);
+int kiss_send_frame(kiss_instance_t *kiss);
+
+
+
+
+
+/**
+ * kiss_encode_and_send
+ * ----------------------
+ * Encode `length` bytes from `data` into the instance working buffer and send it.
+ * * Behavior:
+ *  - Calls kiss_encode to encode the data into kiss->buffer.
+ * - Calls kiss_send_frame to send the encoded frame.
+ * Parameters:
+ * - kiss: initialized instance.
+ * - data: payload to encode.
+ * - length: payload length in bytes.
+ * - header: KISS header byte to use.
+ * Returns: 
+ * - 0 on success
+ * - KISS_ERR_INVALID_PARAMS for bad inputs
+ * - KISS_ERR_BUFFER_OVERFLOW if the provided working buffer is too small
+ * - generic error code from kiss_send_frame on failure
+ */
+int kiss_encode_and_send(kiss_instance_t *kiss, const uint8_t *data, uint16_t length, const uint8_t header);
+
+
+
+
+
 
 
 /** Receive bytes from transport until a full KISS frame is assembled and
@@ -188,13 +227,44 @@ int kiss_send_frame(kiss_instance_t *kiss, void *context);
  *  - output_length: pointer to receive number of decoded bytes.
  *
  * Behavior:
- *  - Calls `read(&byte,1)` repeatedly until a terminating FEND is seen
- *    after payload bytes were collected.
- *  - Un-escapes TFEND/TFESC sequences into original bytes.
+ *  - Calls the `read` callback repeatedly to read bytes.
+ *  - Assembles bytes into `kiss->buffer` until a full frame is received.
  *
- * Returns: 0 on success or a KISS_ERR_* on error.
+ * Returns: 
+ * - 0 on success 
+ * - KISS_ERR_INVALID_PARAMS for bad inputs
+ * - KISS_ERR_INVALID_FRAME for bad escape sequences
+ * - KISS_ERR_BUFFER_OVERFLOW if decoded data exceeds `kiss->buffer_size`
+ * - KISS_ERR_NO_DATA_RECEIVED if no complete frame is received within maxAttempts
+ * - generic error code from transport read function on failure
  */
-int kiss_receive_frame(kiss_instance_t *kiss, void* context, uint32_t maxAttempts);
+int kiss_receive_frame(kiss_instance_t *kiss, uint32_t maxAttempts);
+
+
+
+/** 
+ * kiss_receive_and_decode
+ * -----------------------
+ * Receive a KISS frame and decode it into `output`.
+ *
+ * Parameters:
+ *  - kiss: instance with working buffer and `read` callback.
+ *  - output: buffer to receive decoded payload bytes.
+ *  - output_length: pointer to receive number of decoded bytes.
+ *  - maxAttempts: maximum number of read attempts before giving up.
+ *  - header: optional pointer to receive the KISS header byte (may be NULL).
+ *
+ * Returns:
+ * - 0 on success
+ * - KISS_ERR_INVALID_PARAMS for bad inputs
+ * - KISS_ERR_INVALID_FRAME for bad escape sequences
+ * - KISS_ERR_BUFFER_OVERFLOW if decoded data exceeds `kiss->buffer_size`
+ * - KISS_ERR_NO_DATA_RECEIVED if no complete frame is received within maxAttempts
+ * - generic error code from transport read function on failure
+ */
+int kiss_receive_and_decode(kiss_instance_t *kiss, uint8_t *output, uint16_t *output_length, uint32_t maxAttempts, uint8_t *header);
+
+
 
 
 
@@ -209,8 +279,9 @@ int kiss_receive_frame(kiss_instance_t *kiss, void* context, uint32_t maxAttempt
  * Returns:
  * - 0 on success
  * - KISS_ERR_INVALID_PARAMS if inputs are invalid
+ * - generic error code from kiss_send_frame on failure
  */
-int kiss_set_TXdelay(kiss_instance_t *kiss, void *context,  uint8_t tx_delay);
+int kiss_set_TXdelay(kiss_instance_t *kiss,  uint8_t tx_delay);
 
 /** 
  * kiss_set_speed
@@ -223,8 +294,9 @@ int kiss_set_TXdelay(kiss_instance_t *kiss, void *context,  uint8_t tx_delay);
  * Returns:
  * - 0 on success
  * - KISS_ERR_INVALID_PARAMS if inputs are invalid
+ * - generic error code from kiss_send_frame on failure
  */
-int kiss_set_speed(kiss_instance_t *kiss, void *context, uint32_t BaudRate);
+int kiss_set_speed(kiss_instance_t *kiss, uint32_t BaudRate);
 
 
 
@@ -237,8 +309,9 @@ int kiss_set_speed(kiss_instance_t *kiss, void *context, uint32_t BaudRate);
  * Returns:
  * - 0 on success
  * - KISS_ERR_INVALID_PARAMS if inputs are invalid
+ * - generic error code from kiss_send_frame on failure
  */
-int kiss_send_ack(kiss_instance_t *kiss, void *context);
+int kiss_send_ack(kiss_instance_t *kiss);
 
 
 /**
@@ -250,10 +323,25 @@ int kiss_send_ack(kiss_instance_t *kiss, void *context);
  * Returns:
  * - 0 on success
  * - KISS_ERR_INVALID_PARAMS if inputs are invalid
+ * - generic error code from kiss_send_frame on failure
  */
-int kiss_send_nack(kiss_instance_t *kiss, void *context);
+int kiss_send_nack(kiss_instance_t *kiss);
 
 
+
+
+/** 
+ * kiss_send_ping
+ * -----------------
+ * Send a PING control frame.
+ * Parameters:
+ * - kiss: initialized instance.
+ * Returns:
+ * - 0 on success
+ * - KISS_ERR_INVALID_PARAMS if inputs are invalid
+ * - generic error code from kiss_send_frame on failure
+ */
+int kiss_send_ping(kiss_instance_t *kiss);
 
 
 

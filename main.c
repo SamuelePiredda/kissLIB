@@ -9,25 +9,29 @@ HANDLE hSerial;
 
 
 /* Write function for KISS framing */
-void write(void *context, uint8_t *data, size_t dataLen)
+int write(void *context, uint8_t *data, size_t dataLen)
 {
     DWORD bytesWritten;
 
     if(!WriteFile(context, data, dataLen, &bytesWritten, NULL))
     {
         fprintf(stderr, "Error writing to serial port\n");
-        exit(1);
+        return 1;
     }
+
+    return 0;
 }
 
 /* Read function for KISS framing */
-void read(void *context, uint8_t *buffer, size_t dataLen, size_t *read)
+int read(void *context, uint8_t *buffer, size_t dataLen, size_t *read)
 {
     if(!ReadFile(context, buffer, dataLen, (LPDWORD)read, NULL))
     {
         fprintf(stderr, "Error reading from serial port\n");
-        exit(1);
+        return 1;
     }
+
+    return 0;
 }
 
 void printKissStatus(kiss_instance_t *kiss)
@@ -129,7 +133,7 @@ int main()
     uint8_t buffer[MAX_BUFFER_SIZE];
 
     kiss_instance_t kiss;
-    kiss_init(&kiss, buffer, MAX_BUFFER_SIZE, 1, 9600, write, read);
+    kiss_init(&kiss, buffer, MAX_BUFFER_SIZE, 1, 9600, write, read, hSerial);
 
 
     char str[] = "Hello,World!";
@@ -141,7 +145,7 @@ int main()
     do
     {
 
-        kiss_send_frame(&kiss, NULL);
+        kiss_send_frame(&kiss);
 
         if(kiss.Status != KISS_TRANSMITTED)
         {
@@ -155,7 +159,7 @@ int main()
 
         Sleep(kiss.TXdelay / 100.0);
 
-        kiss_receive_frame(&kiss, NULL, 1);
+        kiss_receive_frame(&kiss, 1);
 
         printf("KISS Status after receive: ");
         switchStatus(kiss.Status);
