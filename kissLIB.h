@@ -37,6 +37,7 @@ extern "C" {
 #define KISS_ERR_INVALID_FRAME 2
 #define KISS_ERR_BUFFER_OVERFLOW 3
 #define KISS_ERR_NO_DATA_RECEIVED 4
+#define KISS_ERR_DATA_NOT_ENCODED 5
 
 
 /**
@@ -125,7 +126,7 @@ typedef int (*kiss_read_fn)(kiss_instance_t *kiss, uint8_t *buffer, size_t dataL
  */
 struct kiss_instance_t {
     uint8_t *buffer;
-    uint16_t buffer_size;
+    size_t buffer_size;
     size_t index;
     uint8_t TXdelay;
     kiss_write_fn write;
@@ -151,7 +152,7 @@ struct kiss_instance_t {
  *
  * Returns: 0 on success or a KISS_ERR_* code on failure.
  */
-int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, uint8_t TXdelay, kiss_write_fn write, kiss_read_fn read, void* context);
+int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, size_t buffer_size, uint8_t TXdelay, kiss_write_fn write, kiss_read_fn read, void* context);
 
 
 /** Encode `length` bytes from `data` into the instance working buffer.
@@ -168,7 +169,7 @@ int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, uint
  *
  * Returns: 0 on success, or an error code (invalid params or buffer overflow).
  */
-int kiss_encode(kiss_instance_t *kiss, const uint8_t *data, uint16_t length, const uint8_t header);
+int kiss_encode(kiss_instance_t *kiss, uint8_t *data, size_t *length, const uint8_t header);
 
 
 
@@ -185,7 +186,7 @@ int kiss_encode(kiss_instance_t *kiss, const uint8_t *data, uint16_t length, con
  *
  * Returns: 0 on success or a KISS_ERR_* code on failure.
  */
-int kiss_decode(kiss_instance_t *kiss, uint8_t *output, uint16_t *output_length, uint8_t *header);
+int kiss_decode(kiss_instance_t *kiss, uint8_t *output, size_t *output_length, uint8_t *header);
 
 
 /** Send an encoded frame over the transport using the `write` callback.
@@ -222,7 +223,7 @@ int kiss_send_frame(kiss_instance_t *kiss);
  * - KISS_ERR_BUFFER_OVERFLOW if the provided working buffer is too small
  * - generic error code from kiss_send_frame on failure
  */
-int kiss_encode_and_send(kiss_instance_t *kiss, const uint8_t *data, uint16_t length, const uint8_t header);
+int kiss_encode_and_send(kiss_instance_t *kiss, uint8_t *data, size_t *length, uint8_t header);
 
 
 
@@ -274,7 +275,7 @@ int kiss_receive_frame(kiss_instance_t *kiss, uint32_t maxAttempts);
  * - KISS_ERR_NO_DATA_RECEIVED if no complete frame is received within maxAttempts
  * - generic error code from transport read function on failure
  */
-int kiss_receive_and_decode(kiss_instance_t *kiss, uint8_t *output, uint16_t *output_length, uint32_t maxAttempts, uint8_t *header);
+int kiss_receive_and_decode(kiss_instance_t *kiss, uint8_t *output, size_t *output_length, uint32_t maxAttempts, uint8_t *header);
 
 
 

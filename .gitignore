@@ -11,5 +11,5 @@
 *.log
 *.tmp
 *.json
-
-output.txt
+*.txt
+*.csv

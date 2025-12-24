@@ -26,9 +26,9 @@
  *  - 0 on success
  *  - KISS_ERR_INVALID_PARAMS if inputs are invalid
  */
-int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, uint8_t tx_delay, kiss_write_fn write, kiss_read_fn read, void* context)
+int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, size_t buffer_size, uint8_t tx_delay, kiss_write_fn write, kiss_read_fn read, void* context)
 {
-    if (kiss == NULL || buffer == NULL || buffer_size == 0 || write == NULL || read == NULL || tx_delay == 0)
+    if (kiss == NULL || buffer_size == 0)
         return KISS_ERR_INVALID_PARAMS;
 
     kiss->buffer = buffer;
@@ -65,12 +65,12 @@ int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, uint
  *  - KISS_ERR_INVALID_PARAMS for bad inputs
  *  - KISS_ERR_BUFFER_OVERFLOW if the provided working buffer is too small
  */
-int kiss_encode(kiss_instance_t *kiss, const uint8_t *data, uint16_t length, const uint8_t header)
+int kiss_encode(kiss_instance_t *kiss, uint8_t *data, size_t *length, const uint8_t header)
 {
     if (kiss == NULL || data == NULL || length == 0) return KISS_ERR_INVALID_PARAMS;
     /* Worst-case expansion: every byte could become two bytes when escaped,
        plus two FEND bytes and one header byte. */
-    if ((uint32_t)length * 2 + 3  > kiss->buffer_size) return KISS_ERR_BUFFER_OVERFLOW;
+    if ((*length * 2 + 3) > kiss->buffer_size) return KISS_ERR_BUFFER_OVERFLOW;
 
     /*  Start of frame with header
         if header is NULL use default 0x00 header for data
@@ -80,7 +80,7 @@ int kiss_encode(kiss_instance_t *kiss, const uint8_t *data, uint16_t length, con
     kiss->buffer[1] = header;
     kiss->index = 2;
 
-    for (uint16_t i = 0; i < length; i++)
+    for (size_t i = 0; i < *length; i++)
     {
         uint8_t b = data[i];
         if (b == KISS_FEND)
@@ -101,7 +101,7 @@ int kiss_encode(kiss_instance_t *kiss, const uint8_t *data, uint16_t length, con
 
     /* Terminate frame */
     kiss->buffer[kiss->index++] = KISS_FEND;
-
+    *length = kiss->index;
     kiss->Status = KISS_TRANSMITTING;
 
     return 0;
@@ -126,14 +126,14 @@ int kiss_encode(kiss_instance_t *kiss, const uint8_t *data, uint16_t length, con
  *  - KISS_ERR_INVALID_PARAMS for bad pointers
  *  - KISS_ERR_INVALID_FRAME for malformed frames or bad escape sequences
  */
-int kiss_decode(kiss_instance_t *kiss, uint8_t *output, uint16_t *output_length, uint8_t *header)
+int kiss_decode(kiss_instance_t *kiss, uint8_t *output, size_t *output_length, uint8_t *header)
 {
     if (kiss == NULL || output == NULL || output_length == NULL) return KISS_ERR_INVALID_PARAMS;
 
-    uint16_t out_index = 0;
+    size_t out_index = 0;
     uint8_t escape = 0;
 
-    for (uint16_t i = 0; i < kiss->index; i++)
+    for (size_t i = 0; i < kiss->index; i++)
     {
         uint8_t byte = kiss->buffer[i];
 
@@ -200,6 +200,8 @@ int kiss_send_frame(kiss_instance_t *kiss)
 {
     if (kiss == NULL || kiss->write == NULL) 
         return KISS_ERR_INVALID_PARAMS;
+    if(kiss->Status != KISS_TRANSMITTING)
+        return KISS_ERR_DATA_NOT_ENCODED;
 
     int err = 0;
     err = kiss->write(kiss, kiss->buffer, kiss->index);
@@ -234,7 +236,7 @@ int kiss_send_frame(kiss_instance_t *kiss)
  * - KISS_ERR_BUFFER_OVERFLOW if the provided working buffer is too small
  * - generic error code from kiss_send_frame on failure
  */
-int kiss_encode_and_send(kiss_instance_t *kiss, const uint8_t *data, uint16_t length, const uint8_t header)
+int kiss_encode_and_send(kiss_instance_t *kiss, uint8_t *data, size_t *length, uint8_t header)
 {
     int err = 0;
     err = kiss_encode(kiss, data, length, header);
@@ -356,7 +358,7 @@ int kiss_receive_frame(kiss_instance_t *kiss, uint32_t maxAttempts)
  * - KISS_ERR_NO_DATA_RECEIVED if no complete frame is received within maxAttempts
  * - generic error code from transport read function on failure
  */
-int kiss_receive_and_decode(kiss_instance_t *kiss, uint8_t *output, uint16_t *output_length, uint32_t maxAttempts, uint8_t *header)
+int kiss_receive_and_decode(kiss_instance_t *kiss, uint8_t *output, size_t *output_length, uint32_t maxAttempts, uint8_t *header)
 {
     int err = 0;
     err = kiss_receive_frame(kiss, maxAttempts);
