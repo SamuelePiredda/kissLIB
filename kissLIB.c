@@ -281,6 +281,8 @@ int kiss_receive_frame(kiss_instance_t *kiss, void* context, uint32_t maxAttempt
             }
 
         }
+
+        return KISS_ERR_INVALID_FRAME;
     }
 }
 
