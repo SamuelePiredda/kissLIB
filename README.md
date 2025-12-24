@@ -34,7 +34,9 @@ kiss_instance_t kiss_i;
 
 Then call the initialization function with all the necessary parameters
 ```C
-int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, uint8_t TXdelay, uint32_t BaudRate, kiss_write_fn write, kiss_read_fn read, void *context);
+int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, 
+                uint8_t TXdelay, uint32_t BaudRate, kiss_write_fn write, 
+                kiss_read_fn read, void *context);
 ```
 
 If you want to send data, use the encode function to encode the data previous to sending
@@ -69,8 +71,10 @@ int kiss_send_ping(kiss_instance_t *kiss);
 
 To quickly encode and send or receive and decode use the following functions
 ```C
-int kiss_encode_and_send(kiss_instance_t *kiss, const uint8_t *data, uint16_t length, const uint8_t header)
-int kiss_receive_and_decode(kiss_instance_t *kiss, uint8_t *output, uint16_t *output_length, uint32_t maxAttempts, uint8_t *header)
+int kiss_encode_and_send(kiss_instance_t *kiss, const uint8_t *data, 
+            uint16_t length, const uint8_t header)
+int kiss_receive_and_decode(kiss_instance_t *kiss, uint8_t *output, 
+            uint16_t *output_length, uint32_t maxAttempts, uint8_t *header)
 ```
 
 
