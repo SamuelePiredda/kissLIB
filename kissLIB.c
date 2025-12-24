@@ -38,6 +38,7 @@ int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, uint
     kiss->index = 0;
     kiss->write = write;
     kiss->read = read;
+    kiss->Status = KISS_NOTHING;
 
     return 0;
 }
@@ -64,7 +65,7 @@ int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, uint
  *  - KISS_ERR_INVALID_PARAMS for bad inputs
  *  - KISS_ERR_BUFFER_OVERFLOW if the provided working buffer is too small
  */
-int kiss_encode(kiss_instance_t *kiss, const uint8_t *data, uint16_t length, const uint8_t *header)
+int kiss_encode(kiss_instance_t *kiss, const uint8_t *data, uint16_t length, const uint8_t header)
 {
     if (kiss == NULL || data == NULL || length == 0) return KISS_ERR_INVALID_PARAMS;
     /* Worst-case expansion: every byte could become two bytes when escaped,
@@ -76,11 +77,7 @@ int kiss_encode(kiss_instance_t *kiss, const uint8_t *data, uint16_t length, con
         if header is not NULL use the provided header value from the caller
     */
     kiss->buffer[0] = KISS_FEND;
-    if(header != NULL)
-        kiss->buffer[1] = *header;
-    else
-        kiss->buffer[1] = 0x00; /* default header */
-
+    kiss->buffer[1] = header;
     kiss->index = 2;
 
     for (uint16_t i = 0; i < length; i++)
@@ -104,6 +101,8 @@ int kiss_encode(kiss_instance_t *kiss, const uint8_t *data, uint16_t length, con
 
     /* Terminate frame */
     kiss->buffer[kiss->index++] = KISS_FEND;
+
+    kiss->Status = KISS_TRANSMITTING;
 
     return 0;
 }
@@ -197,15 +196,14 @@ int kiss_decode(kiss_instance_t *kiss, uint8_t *output, uint16_t *output_length,
         return 0;
  *  - KISS_ERR_INVALID_PARAMS if instance or callback is NULL
  */
-int kiss_send_frame(kiss_instance_t *kiss)
+int kiss_send_frame(kiss_instance_t *kiss, void *context)
 {
-    if (kiss == NULL || kiss->write == NULL) return KISS_ERR_INVALID_PARAMS;
+    if (kiss == NULL || kiss->write == NULL) 
+        return KISS_ERR_INVALID_PARAMS;
 
-    for (uint16_t i = 0; i < kiss->index; i++)
-    {
-        kiss->write(kiss->buffer[i]);
-    }
+    kiss->write(context, kiss->buffer, kiss->index);
 
+    kiss->Status = KISS_TRANSMITTED;
     return 0;
 }
 
@@ -226,46 +224,62 @@ int kiss_send_frame(kiss_instance_t *kiss)
  *  - KISS_ERR_INVALID_FRAME for bad escape sequences
  *  - KISS_ERR_BUFFER_OVERFLOW if decoded data exceeds `kiss->buffer_size`
  */
-int kiss_receive_frame(kiss_instance_t *kiss, uint32_t maxAttempts)
+int kiss_receive_frame(kiss_instance_t *kiss, void* context, uint32_t maxAttempts)
 {
+    // Validate inputs
     if (kiss == NULL || kiss->read == NULL || kiss->buffer == NULL)
         return KISS_ERR_INVALID_PARAMS;
 
     uint8_t byte;
     kiss->index = 0;
+    kiss->Status = KISS_RECEIVING;
     int frame_started = 0;
 
+    // Read bytes until a full frame is received
     for(int attempt = 0; attempt < maxAttempts; attempt++)
     {
-        kiss->read(&byte, 1);
+        kiss->read(context, &byte, kiss->buffer_size, &(kiss->index));
 
-        if (!frame_started)
+        kiss->index = 0;
+        
+        for(size_t i = 0; i < kiss->index; i++)
         {
+            byte = kiss->buffer[i];
+
+            if (!frame_started)
+            {
+                if (byte == KISS_FEND)
+                {
+                    kiss->buffer[kiss->index++] = byte;                    
+                    frame_started = 1;
+                }
+                continue; 
+            }
+
+            // overflow check
+            if (kiss->index >= kiss->buffer_size)
+            {
+                kiss->Status = KISS_RECEIVED_ERROR;
+                return KISS_ERR_BUFFER_OVERFLOW;
+            }
+            
+            // Store byte arrived in buffer with index increment
+            kiss->buffer[kiss->index++] = byte;
+
             if (byte == KISS_FEND)
             {
-                kiss->buffer[kiss->index++] = byte;
-                frame_started = 1;
+                if (kiss->index == 2) 
+                {
+                    kiss->index = 1; 
+                }
+                else 
+                {
+                    kiss->Status = KISS_RECEIVED;
+                    kiss->index++;
+                    return 0;
+                }
             }
-            continue; 
-        }
 
-        if (kiss->index >= kiss->buffer_size)
-        {
-            return KISS_ERR_BUFFER_OVERFLOW;
-        }
-        
-        kiss->buffer[kiss->index++] = byte;
-
-        if (byte == KISS_FEND)
-        {
-            if (kiss->index == 2) 
-            {
-                kiss->index = 1; 
-            }
-            else 
-            {
-                return 0;
-            }
         }
     }
 }
@@ -283,7 +297,7 @@ int kiss_receive_frame(kiss_instance_t *kiss, uint32_t maxAttempts)
  * - 0 on success
  * - KISS_ERR_INVALID_PARAMS if inputs are invalid
  */
-int kiss_set_TXdelay(kiss_instance_t *kiss, uint8_t tx_delay)
+int kiss_set_TXdelay(kiss_instance_t *kiss, void *context, uint8_t tx_delay)
 {
     if (kiss == NULL || tx_delay == 0)
         return KISS_ERR_INVALID_PARAMS;
@@ -295,8 +309,9 @@ int kiss_set_TXdelay(kiss_instance_t *kiss, uint8_t tx_delay)
     kiss->buffer[2] = tx_delay;
     kiss->buffer[3] = KISS_FEND;
     kiss->index = 4;
+    kiss->Status = KISS_TRANSMITTING;
 
-    kiss_send_frame(kiss);
+    kiss_send_frame(kiss, context);
 
     return 0;
 }
@@ -313,7 +328,7 @@ int kiss_set_TXdelay(kiss_instance_t *kiss, uint8_t tx_delay)
  * - 0 on success
  * - KISS_ERR_INVALID_PARAMS if inputs are invalid
  */
-int kiss_set_speed(kiss_instance_t *kiss, uint32_t BaudRate)
+int kiss_set_speed(kiss_instance_t *kiss, void *context, uint32_t BaudRate)
 {
     if (kiss == NULL || BaudRate == 0)
         return KISS_ERR_INVALID_PARAMS;
@@ -328,8 +343,9 @@ int kiss_set_speed(kiss_instance_t *kiss, uint32_t BaudRate)
     kiss->buffer[5] = (uint8_t)((BaudRate >> 24) & 0xFF);
     kiss->buffer[6] = KISS_FEND;
     kiss->index = 7;
+    kiss->Status = KISS_TRANSMITTING;
 
-    kiss_send_frame(kiss);
+    kiss_send_frame(kiss, context);
 
     return 0;
 }
@@ -344,7 +360,7 @@ int kiss_set_speed(kiss_instance_t *kiss, uint32_t BaudRate)
  * - 0 on success
  * - KISS_ERR_INVALID_PARAMS if inputs are invalid
  */
-int kiss_send_ack(kiss_instance_t *kiss)
+int kiss_send_ack(kiss_instance_t *kiss, void *context)
 {
     if (kiss == NULL)
         return KISS_ERR_INVALID_PARAMS;
@@ -353,8 +369,9 @@ int kiss_send_ack(kiss_instance_t *kiss)
     kiss->buffer[1] = KISS_HEADER_ACK;
     kiss->buffer[2] = KISS_FEND;
     kiss->index = 3;
+    kiss->Status = KISS_TRANSMITTING;
 
-    kiss_send_frame(kiss);
+    kiss_send_frame(kiss, context);
 
     return 0;
 }
@@ -370,7 +387,7 @@ int kiss_send_ack(kiss_instance_t *kiss)
  * - 0 on success
  * - KISS_ERR_INVALID_PARAMS if inputs are invalid
  */
-int kiss_send_nack(kiss_instance_t *kiss)
+int kiss_send_nack(kiss_instance_t *kiss, void *context)
 {
     if (kiss == NULL)
         return KISS_ERR_INVALID_PARAMS;
@@ -379,8 +396,9 @@ int kiss_send_nack(kiss_instance_t *kiss)
     kiss->buffer[1] = KISS_HEADER_NACK;
     kiss->buffer[2] = KISS_FEND;
     kiss->index = 3;
+    kiss->Status = KISS_TRANSMITTING;
 
-    kiss_send_frame(kiss);
+    kiss_send_frame(kiss, context);
 
     return 0;
 }

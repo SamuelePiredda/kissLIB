@@ -2,18 +2,32 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <windows.h>
+
+
+HANDLE hSerial;
+
 
 /* Write function for KISS framing */
-void write(uint8_t byte)
+void write(void *context, uint8_t *data, size_t dataLen)
 {
-    printf("%02X ", byte);
+    DWORD bytesWritten;
+
+    if(!WriteFile(context, data, dataLen, &bytesWritten, NULL))
+    {
+        fprintf(stderr, "Error writing to serial port\n");
+        exit(1);
+    }
 }
 
 /* Read function for KISS framing */
-void read(uint8_t *byte, uint16_t count)
+void read(void *context, uint8_t *buffer, size_t dataLen, size_t *read)
 {
-    for(uint16_t i = 0; i < count; i++)
-        scanf(" %2hhx", &byte[i]);
+    if(!ReadFile(context, buffer, dataLen, (LPDWORD)read, NULL))
+    {
+        fprintf(stderr, "Error reading from serial port\n");
+        exit(1);
+    }
 }
 
 void printKissStatus(kiss_instance_t *kiss)
@@ -36,41 +50,121 @@ char randomCharacter()
     return (char)(rand() % 256);
 }
 
+void switchStatus(int status)
+{
+    switch(status)
+    {
+        case KISS_NOTHING:
+            printf("KISS_NOTHING\n");
+            break;
+        case KISS_TRANSMITTING:
+            printf("KISS_TRANSMITTING\n");
+            break;
+        case KISS_TRANSMITTED:
+            printf("KISS_TRANSMITTED\n");
+            break;
+        case KISS_RECEIVING:
+            printf("KISS_RECEIVING\n");
+            break;
+        case KISS_RECEIVED:
+            printf("KISS_RECEIVED\n");
+            break;
+        case KISS_RECEIVED_ERROR:
+            printf("KISS_RECEIVED_ERROR\n");
+            break;
+        default:
+            printf("UNKNOWN STATUS\n");
+            break;
+    }
+}
+
 
 /** Example main function demonstrating KISS receive and decode.
  */
 int main()
 {
-    #define buffer_size  1024
-
-    uint8_t buffer[buffer_size];
-
-
-    kiss_instance_t kiss;
-
-
-    kiss_init(&kiss, buffer, buffer_size, 10, 9600, write, read);
-
-    printKissStatus(&kiss);
-
-    kiss_encode(&kiss, (uint8_t *)"Hello, KISS!", 12, KISS_HEADER_DATA(0));
-
-    printKissStatus(&kiss);
-
-    char received_data[buffer_size];
-    uint16_t received_length = 0;
-    uint8_t header = 0;
-
-    kiss_decode(&kiss, (uint8_t *)received_data, (uint16_t *)&received_length, &header);
-
-    printf("Decoded Header: %02X\n", header);
-    printf("Decoded Data (%d bytes): ", received_length);
-    for (uint16_t i = 0; i < received_length; i++)
+    hSerial = CreateFile("COM3", GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hSerial == INVALID_HANDLE_VALUE)
     {
-        printf("%c", received_data[i]);
+        fprintf(stderr, "Error opening serial port\n");
+        return 1;
+    }
+    DCB dcbSerialParams = {0};
+    dcbSerialParams.DCBlength = sizeof(dcbSerialParams);
+
+    if(!GetCommState(hSerial, &dcbSerialParams))
+    {
+        fprintf(stderr, "Error getting serial port state\n");
+        CloseHandle(hSerial);
+        return 1;
+    }
+
+    dcbSerialParams.BaudRate = CBR_9600;
+    dcbSerialParams.ByteSize = 8;  
+    dcbSerialParams.StopBits = ONESTOPBIT;
+    dcbSerialParams.Parity   = NOPARITY;
+
+    if(!SetCommState(hSerial, &dcbSerialParams))
+    {
+        fprintf(stderr, "Error setting serial port state\n");
+        CloseHandle(hSerial);
+        return 1;
+    }
+
+    COMMTIMEOUTS timeouts = {0};
+    timeouts.ReadIntervalTimeout = 50;
+    timeouts.ReadTotalTimeoutConstant = 50;
+    timeouts.ReadTotalTimeoutMultiplier = 10;
+    timeouts.WriteTotalTimeoutConstant = 50;
+    timeouts.WriteTotalTimeoutMultiplier = 10;
+    if(!SetCommTimeouts(hSerial, &timeouts))
+    {
+        fprintf(stderr, "Error setting serial port timeouts\n");
+        CloseHandle(hSerial);
+        return 1;
     }
 
 
+    #define MAX_BUFFER_SIZE 1024
+    uint8_t buffer[MAX_BUFFER_SIZE];
+
+    kiss_instance_t kiss;
+    kiss_init(&kiss, buffer, MAX_BUFFER_SIZE, 1, 9600, write, read);
+
+
+    char str[] = "Hello,World!";
+
+    kiss_encode(&kiss, (uint8_t*)str, strlen(str), KISS_HEADER_DATA(0));
+
+    printKissStatus(&kiss);
+
+    do
+    {
+
+        kiss_send_frame(&kiss, NULL);
+
+        if(kiss.Status != KISS_TRANSMITTED)
+        {
+            printf("Error: Frame not transmitted properly.\n");
+            exit(1);
+        }
+        else
+        {
+            printf("Frame transmitted successfully.\n");
+        }
+
+        Sleep(kiss.TXdelay / 100.0);
+
+        kiss_receive_frame(&kiss, NULL, 1);
+
+        printf("KISS Status after receive: ");
+        switchStatus(kiss.Status);
+        printf("\n");   
+ 
+    } while (1);
+    
+
+    CloseHandle(hSerial);
 
     return 0;
 }

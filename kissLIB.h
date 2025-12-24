@@ -6,6 +6,8 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <stdlib.h>
+#include <stddef.h>
 
 #define KISSLIB_VERSION "1.0.0"
 
@@ -37,6 +39,25 @@ extern "C" {
 
 
 
+/**
+ * KISS frame direction indicators
+ * - KISS_NOTHING: no frame activity.
+ * - KISS_TRANSMITTING: frame has been encoded, ready to transmit
+ * - KISS_TRANSMITTED: frame has been sent.
+ * - KISS_RECEIVING: frame is being received.
+ * - KISS_RECEIVED: frame has been received.
+ * - KISS_RECEIVED_ERROR: error occurred during frame reception.
+ */
+#define KISS_NOTHING 0x00           // No frame activity
+#define KISS_TRANSMITTING 0x01      // Frame is ready to be transmitted
+#define KISS_TRANSMITTED 0x02       // Frame has been transmitted
+#define KISS_RECEIVING 0x03         // Frame is ready to be received
+#define KISS_RECEIVED 0x04          // Frame has been received
+#define KISS_RECEIVED_ERROR 0x05    // Frame received error
+
+
+
+
 /** KISS header byte values
  *
  * The KISS header byte follows the initial FEND in a frame and indicates
@@ -63,7 +84,7 @@ extern "C" {
  * Parameters:
  *  - byte: data byte to send.
  */
-typedef void (*kiss_write_fn)(uint8_t byte);
+typedef void (*kiss_write_fn)(void *context, uint8_t *data, size_t length);
 
 /** Transport callback: read `length` bytes into `data` from transport.
  *
@@ -73,7 +94,7 @@ typedef void (*kiss_write_fn)(uint8_t byte);
  *  - data: destination buffer.
  *  - length: number of bytes requested.
  */
-typedef void (*kiss_read_fn)(uint8_t *data, uint16_t length);
+typedef void (*kiss_read_fn)(void *context, uint8_t *buffer, size_t dataLen, size_t *read);
 
 
 /** KISS instance structure
@@ -82,7 +103,10 @@ typedef void (*kiss_read_fn)(uint8_t *data, uint16_t length);
  *  - buffer: user-provided working memory for encoding/decoding frames.
  *  - buffer_size: size of `buffer` in bytes.
  *  - index: current length of meaningful data in `buffer`.
+ *  - TXdelay: transmit delay in milliseconds (10 to 2550).
+ *  - speed: configured baud rate in bits per second.
  *  - write/read: user transport callbacks.
+ *  - Status: current frame status (KISS_NOTHING, KISS_TRANSMITTING, etc).
  *
  * Notes:
  *  - The library uses the caller's buffer; it does not allocate memory.
@@ -93,11 +117,12 @@ typedef struct
 {
     uint8_t *buffer;
     uint16_t buffer_size;
-    uint16_t index;
+    size_t index;
     uint8_t TXdelay;
     uint32_t speed;
     kiss_write_fn write;
     kiss_read_fn read;
+    uint8_t Status;
 } kiss_instance_t;
 
 
@@ -128,7 +153,7 @@ int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, uint
  *
  * Returns: 0 on success, or an error code (invalid params or buffer overflow).
  */
-int kiss_encode(kiss_instance_t *kiss, const uint8_t *data, uint16_t length, const uint8_t *header);
+int kiss_encode(kiss_instance_t *kiss, const uint8_t *data, uint16_t length, const uint8_t header);
 
 
 /** Decode a frame stored in `kiss->buffer` into `output`.
@@ -151,7 +176,7 @@ int kiss_decode(kiss_instance_t *kiss, uint8_t *output, uint16_t *output_length,
  *
  * Returns: 0 on success or KISS_ERR_INVALID_PARAMS.
  */
-int kiss_send_frame(kiss_instance_t *kiss);
+int kiss_send_frame(kiss_instance_t *kiss, void *context);
 
 
 /** Receive bytes from transport until a full KISS frame is assembled and
@@ -169,7 +194,7 @@ int kiss_send_frame(kiss_instance_t *kiss);
  *
  * Returns: 0 on success or a KISS_ERR_* on error.
  */
-int kiss_receive_frame(kiss_instance_t *kiss, uint32_t maxAttempts);
+int kiss_receive_frame(kiss_instance_t *kiss, void* context, uint32_t maxAttempts);
 
 
 
@@ -185,7 +210,7 @@ int kiss_receive_frame(kiss_instance_t *kiss, uint32_t maxAttempts);
  * - 0 on success
  * - KISS_ERR_INVALID_PARAMS if inputs are invalid
  */
-int kiss_set_TXdelay(kiss_instance_t *kiss, uint8_t tx_delay);
+int kiss_set_TXdelay(kiss_instance_t *kiss, void *context,  uint8_t tx_delay);
 
 /** 
  * kiss_set_speed
@@ -199,7 +224,7 @@ int kiss_set_TXdelay(kiss_instance_t *kiss, uint8_t tx_delay);
  * - 0 on success
  * - KISS_ERR_INVALID_PARAMS if inputs are invalid
  */
-int kiss_set_speed(kiss_instance_t *kiss, uint32_t BaudRate);
+int kiss_set_speed(kiss_instance_t *kiss, void *context, uint32_t BaudRate);
 
 
 
@@ -213,7 +238,7 @@ int kiss_set_speed(kiss_instance_t *kiss, uint32_t BaudRate);
  * - 0 on success
  * - KISS_ERR_INVALID_PARAMS if inputs are invalid
  */
-int kiss_send_ack(kiss_instance_t *kiss);
+int kiss_send_ack(kiss_instance_t *kiss, void *context);
 
 
 /**
@@ -226,7 +251,7 @@ int kiss_send_ack(kiss_instance_t *kiss);
  * - 0 on success
  * - KISS_ERR_INVALID_PARAMS if inputs are invalid
  */
-int kiss_send_nack(kiss_instance_t *kiss);
+int kiss_send_nack(kiss_instance_t *kiss, void *context);
 
 
 
