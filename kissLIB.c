@@ -10,6 +10,19 @@
  *   loop until a frame terminator is seen.
  */
 
+
+/**
+ * kiss_init_crc32_table
+ * -----------------------
+ * Initialize the CRC32 lookup table.
+ */
+uint32_t kiss_CRC32_Table[256];
+
+
+
+
+
+
 /**
  * kiss_init
  * ----------
@@ -40,6 +53,8 @@ int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, size_t buffer_size, uint8_
     kiss->read = read;
     kiss->Status = KISS_NOTHING;
 
+    kiss_init_crc32_table();
+
     return 0;
 }
 
@@ -68,9 +83,7 @@ int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, size_t buffer_size, uint8_
 int kiss_encode(kiss_instance_t *kiss, uint8_t *data, size_t *length, const uint8_t header)
 {
     if (kiss == NULL || data == NULL || length == 0) return KISS_ERR_INVALID_PARAMS;
-    /* Worst-case expansion: every byte could become two bytes when escaped,
-       plus two FEND bytes and one header byte. */
-    if ((*length * 2 + 3) > kiss->buffer_size) return KISS_ERR_BUFFER_OVERFLOW;
+    if(kiss->buffer_size < 3) return KISS_ERR_BUFFER_OVERFLOW;
 
     /*  Start of frame with header
         if header is NULL use default 0x00 header for data
@@ -85,21 +98,29 @@ int kiss_encode(kiss_instance_t *kiss, uint8_t *data, size_t *length, const uint
         uint8_t b = data[i];
         if (b == KISS_FEND)
         {
+            if(kiss->index + 2 > kiss->buffer_size)
+                return KISS_ERR_BUFFER_OVERFLOW;
             kiss->buffer[kiss->index++] = KISS_FESC;
             kiss->buffer[kiss->index++] = KISS_TFEND;
         }
         else if (b == KISS_FESC)
         {
+            if(kiss->index + 2 > kiss->buffer_size)
+                return KISS_ERR_BUFFER_OVERFLOW;
             kiss->buffer[kiss->index++] = KISS_FESC;
             kiss->buffer[kiss->index++] = KISS_TFESC;
         }
         else
         {
+            if(kiss->index + 1 > kiss->buffer_size)
+                return KISS_ERR_BUFFER_OVERFLOW;
             kiss->buffer[kiss->index++] = b;
         }
     }
 
     /* Terminate frame */
+    if(kiss->index + 1 > kiss->buffer_size)
+        return KISS_ERR_BUFFER_OVERFLOW;
     kiss->buffer[kiss->index++] = KISS_FEND;
     *length = kiss->index;
     kiss->Status = KISS_TRANSMITTING;
@@ -508,3 +529,152 @@ int kiss_send_ping(kiss_instance_t *kiss)
 
     return kiss_send_frame(kiss);
 }
+
+
+/**< Initialize the CRC32 lookup table.
+ * -----------------------
+ * kiss_init_crc32_table
+ * -----------------------
+ * Initialize the CRC32 lookup table.   
+ */
+void kiss_init_crc32_table()
+{
+    uint32_t polynomial = 0xEDB88320;
+    for (uint32_t i = 0; i < 256; i++) 
+    {
+        uint32_t crc = i;
+        for (uint32_t j = 8; j > 0; j--) 
+            if (crc & 1) 
+                crc = (crc >> 1) ^ polynomial;
+            else 
+                crc >>= 1;
+        kiss_CRC32_Table[i] = crc;
+    }   
+}
+
+/** 
+ * kiss_crc32
+ * -----------------------
+ * Compute the CRC32 checksum for the given data.
+ *
+ * Parameters:
+ *  - data: pointer to input data
+ *  - len: length of input data in bytes
+ *
+ * Returns:
+ *  - CRC32 checksum
+ */
+uint32_t kiss_crc32(const uint8_t *data, size_t len)
+{
+    uint32_t crc = 0xFFFFFFFF;
+    for (size_t i = 0; i < len; i++) 
+    {
+        uint8_t byte = data[i];
+        uint32_t lookupIndex = (crc ^ byte) & 0xFF;
+        crc = (crc >> 8) ^ kiss_CRC32_Table[lookupIndex];
+    }
+    return crc ^ 0xFFFFFFFF;
+}
+
+/**
+ * kiss_verify_crc32
+ * -----------------------
+ * Verify the CRC32 checksum for the given data.
+ *
+ * Parameters:
+ *  - data: pointer to input data
+ *  - len: length of input data in bytes
+ *  - expected_crc: expected CRC32 checksum
+ *
+ * Returns:
+ *  - 1 if checksum matches, 0 otherwise
+ */
+int kiss_verify_crc32(const uint8_t *data, size_t len, uint32_t expected_crc)
+{
+    return (kiss_crc32(data, len) == expected_crc) ? 1 : 0;
+}
+
+
+
+
+uint32_t kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *data, size_t *length, const uint8_t header)
+{
+    int kiss_err = 0;
+    kiss_err = kiss_encode(kiss, data, length, header);
+    if(kiss_err != 0)
+    {
+        return kiss_err;
+    }
+
+    kiss->index -= 1; // Remove the trailing FEND for CRC32 appending
+
+    uint32_t crc = kiss_crc32(data, *length);
+
+    for (int i = 0; i < 4; i++)
+    {
+        uint8_t b = (crc >> (i * 8)) & 0xFF;
+        if (b == KISS_FEND)
+        {
+            if(kiss->index + 2 > kiss->buffer_size)
+                return KISS_ERR_BUFFER_OVERFLOW;
+            kiss->buffer[kiss->index++] = KISS_FESC;
+            kiss->buffer[kiss->index++] = KISS_TFEND;
+        }
+        else if (b == KISS_FESC)
+        {
+            if(kiss->index + 2 > kiss->buffer_size)
+                return KISS_ERR_BUFFER_OVERFLOW;
+            kiss->buffer[kiss->index++] = KISS_FESC;
+            kiss->buffer[kiss->index++] = KISS_TFESC;
+        }
+        else
+        {
+            if(kiss->index + 1 > kiss->buffer_size)
+                return KISS_ERR_BUFFER_OVERFLOW;
+            kiss->buffer[kiss->index++] = b;
+        }
+    }
+
+    /* Terminate frame */
+    if(kiss->index + 1 > kiss->buffer_size)
+        return KISS_ERR_BUFFER_OVERFLOW;
+    kiss->buffer[kiss->index++] = KISS_FEND;
+    *length = kiss->index;
+    kiss->Status = KISS_TRANSMITTING;
+
+    return 0;
+}
+
+
+
+
+
+int kiss_decode_crc32(kiss_instance_t *kiss, uint8_t *output, size_t *output_length, uint8_t *header)
+{
+    int err = kiss_decode(kiss, output, output_length, header);
+    if (err != 0)
+    {
+        return err;
+    }
+
+
+
+    if (!kiss_verify_crc32(output, *output_length - 4, 
+        (uint32_t)(output[*output_length - 4] | 
+                   (output[*output_length - 3] << 8) | 
+                   (output[*output_length - 2] << 16) | 
+                   (output[*output_length - 1] << 24))))
+    {
+        *output_length = *output_length - 4; // Exclude CRC32 bytes
+        kiss->index = 0; /* reset index after decoding */
+        kiss->Status = KISS_RECEIVED_ERROR;
+        return KISS_ERR_CRC32_MISMATCH;
+    }
+
+    *output_length = *output_length - 4; // Exclude CRC32 bytes
+    kiss->index = 0; /* reset index after decoding */
+    kiss->Status = KISS_RECEIVED;
+
+    return 0;
+}
+

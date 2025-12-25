@@ -8,8 +8,54 @@ extern "C" {
 #include <stdint.h>
 #include <stdlib.h>
 #include <stddef.h>
+#include <stdio.h>
 
 #define KISSLIB_VERSION "2.0.0"
+
+
+
+/**< Initialize the CRC32 lookup table.
+ * -----------------------
+ * kiss_init_crc32_table
+ * -----------------------
+ * Initialize the CRC32 lookup table.   
+ */
+void kiss_init_crc32_table();
+
+/** 
+ * kiss_crc32
+ * -----------------------
+ * Compute the CRC32 checksum for the given data.
+ *
+ * Parameters:
+ *  - data: pointer to input data
+ *  - len: length of input data in bytes
+ *
+ * Returns:
+ *  - CRC32 checksum
+ */
+uint32_t kiss_crc32(const uint8_t *data, size_t len);
+
+/**
+ * kiss_verify_crc32
+ * -----------------------
+ * Verify the CRC32 checksum for the given data.
+ *
+ * Parameters:
+ *  - data: pointer to input data
+ *  - len: length of input data in bytes
+ *  - expected_crc: expected CRC32 checksum
+ *
+ * Returns:
+ *  - 1 if checksum matches, 0 otherwise
+ */
+int kiss_verify_crc32(const uint8_t *data, size_t len, uint32_t expected_crc);
+
+
+
+
+
+
 
 /** KISS protocol special byte values
  *
@@ -38,7 +84,7 @@ extern "C" {
 #define KISS_ERR_BUFFER_OVERFLOW 3
 #define KISS_ERR_NO_DATA_RECEIVED 4
 #define KISS_ERR_DATA_NOT_ENCODED 5
-
+#define KISS_ERR_CRC32_MISMATCH 6
 
 /**
  * KISS frame direction indicators
@@ -356,6 +402,45 @@ int kiss_send_nack(kiss_instance_t *kiss);
  */
 int kiss_send_ping(kiss_instance_t *kiss);
 
+
+
+/**
+ * kiss_encode_crc32
+ * -----------------------
+ * Encode `length` bytes from `data` into the instance working buffer with CRC32.
+ * * Behavior:
+ *  - Writes: FEND, header (0x00), escaped payload, CRC32, FEND into `kiss->buffer`.
+ *  - Updates `kiss->index` to the encoded size.
+ * Parameters:
+ * - kiss: initialized instance.
+ * - data: payload to encode.
+ * - length: payload length in bytes.
+ * - header: KISS header byte to use.
+ * Returns: 0 on success, or an error code (invalid params or buffer overflow).
+ */
+uint32_t kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *data, size_t *length, const uint8_t header);
+
+
+
+/** 
+ * kiss_decode_crc32
+ * -----------------------
+ * Decode an encoded frame that is present in `kiss->buffer`.
+ * The caller must set `kiss->index` to the number of bytes in the buffer
+ * that belong to the encoded frame prior to calling this function.
+ *
+ * Parameters:
+ *  - kiss: instance containing encoded frame data
+ *  - output: buffer to receive decoded payload
+ *  - output_length: pointer to variable that will receive decoded length
+ *  - header: optional pointer to receive the KISS header byte (may be NULL)
+ *
+ * Returns:
+ *  - 0 on success
+ *  - KISS_ERR_INVALID_PARAMS for bad pointers
+ *  - KISS_ERR_INVALID_FRAME for malformed frames or bad escape sequences
+ */
+int kiss_decode_crc32(kiss_instance_t *kiss, uint8_t *output, size_t *output_length, uint8_t *header);
 
 
 #ifdef __cplusplus

@@ -38,6 +38,13 @@ int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size,
                 uint8_t TXdelay, uint32_t BaudRate, kiss_write_fn write, 
                 kiss_read_fn read, void *context);
 ```
+Each kiss_instance_t use one buffer for input/output. This buffer allocation is done by the user which can select the right amount of bytes to allocate to it. You can use static allocation or dynamic allocation.
+```C
+const size_t len = 1024;
+uint8_t buffer_kiss[len];
+```
+If you plan to transmit packets that are X long, you have to create a buffer which is X + 2 (FEND) + 1 (header) + X. This takes into account the worst case scenario when you have to transmit only special characters. For instance, if you want to transmit 256 bytes  per packet, please use at least 515 bytes as buffer, but in the example above 1024 bytes have been used in order to be in safe zone. If you use static allocation and you have buffer overflow you can't change the amount of memory allocated without changing the program.
+
 
 If you want to send data, use the encode function to encode the data previous to sending
 ```C
