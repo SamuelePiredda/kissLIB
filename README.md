@@ -48,12 +48,14 @@ If you plan to transmit packets that are X long, you have to create a buffer whi
 
 If you want to send data, use the encode function to encode the data previous to sending
 ```C
-int kiss_encode(kiss_instance_t *kiss, const uint8_t *data, uint16_t length, const uint8_t header);
+int kiss_encode(kiss_instance_t *kiss, const uint8_t *data, 
+            uint16_t length, const uint8_t header);
 ```
 
 After you have received a frame use this function to decode the data 
 ```C
-int kiss_decode(kiss_instance_t *kiss, uint8_t *output, uint16_t *output_length, uint8_t *header);
+int kiss_decode(kiss_instance_t *kiss, uint8_t *output, 
+            uint16_t *output_length, uint8_t *header);
 ```
 
 After the data that you want to send has been encoded use this function to send it
