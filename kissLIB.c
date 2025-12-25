@@ -597,7 +597,7 @@ int kiss_verify_crc32(const uint8_t *data, size_t len, uint32_t expected_crc)
 
 
 
-uint32_t kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *data, size_t *length, const uint8_t header)
+int kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *data, size_t *length, const uint8_t header)
 {
     int kiss_err = 0;
     kiss_err = kiss_encode(kiss, data, length, header);

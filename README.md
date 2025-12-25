@@ -84,4 +84,8 @@ int kiss_receive_and_decode(kiss_instance_t *kiss, uint8_t *output,
             uint16_t *output_length, uint32_t maxAttempts, uint8_t *header)
 ```
 
-
+The following functions encode and decode the data with four more bytes for CRC32 at the end of the frame.
+```C
+int kiss_decode_crc32(kiss_instance_t *kiss, uint8_t *output, size_t *output_length, uint8_t *header);
+int kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *data, size_t *length, const uint8_t header);
+```
