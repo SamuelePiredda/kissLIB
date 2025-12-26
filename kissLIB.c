@@ -11,12 +11,15 @@
  */
 
 
+
+static int CRC_INIT_FLAG = 0;
+
 /**
  * kiss_init_crc32_table
  * -----------------------
  * Initialize the CRC32 lookup table.
  */
-uint32_t kiss_CRC32_Table[256];
+static uint32_t kiss_CRC32_Table[256];
 
 
 
@@ -53,7 +56,11 @@ int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, size_t buffer_size, uint8_
     kiss->read = read;
     kiss->Status = KISS_STATUS_NOTHING;
 
-    kiss_init_crc32_table();
+    if(CRC_INIT_FLAG == 0)
+    {
+        kiss_init_crc32_table();
+        CRC_INIT_FLAG = 1;
+    }
 
     return 0;
 }
@@ -156,7 +163,7 @@ int kiss_decode(kiss_instance_t *kiss, uint8_t *output, size_t output_max_size, 
 
     for (size_t i = 0; i < kiss->index; i++)
     {
-        if(output_max_size < out_index)
+        if(out_index >= output_max_size)
             return KISS_ERR_BUFFER_OVERFLOW;
 
         uint8_t byte = kiss->buffer[i];
@@ -303,7 +310,7 @@ int kiss_receive_frame(kiss_instance_t *kiss, uint32_t maxAttempts)
     // Read bytes until a full frame is received
     for(int attempt = 0; attempt < maxAttempts; attempt++)
     {
-        err = kiss->read(kiss, &byte, kiss->buffer_size, &(kiss->index));
+        err = kiss->read(kiss, kiss->buffer, kiss->buffer_size, &(kiss->index));
 
         if(err != 0)
         {
@@ -420,11 +427,10 @@ int kiss_set_TXdelay(kiss_instance_t *kiss, uint8_t tx_delay)
 
     kiss->TXdelay = tx_delay*10;
 
-    kiss->buffer[0] = tx_delay;
-    kiss->index = 1;
-    kiss->Status = KISS_STATUS_TRANSMITTING;
+    uint8_t payData = tx_delay;
+    size_t len = 1;
 
-    return kiss_encode_and_send(kiss, kiss->buffer, &(kiss->index), KISS_HEADER_TX_DELAY);
+    return kiss_encode_and_send(kiss, &payData, &len, KISS_HEADER_TX_DELAY);
 }
 
 /** 
@@ -446,14 +452,15 @@ int kiss_set_speed(kiss_instance_t *kiss, uint32_t BaudRate)
     if(kiss->buffer_size < 7)
         return KISS_ERR_BUFFER_OVERFLOW;
 
-    kiss->buffer[0] = (uint8_t)(BaudRate & 0xFF);
-    kiss->buffer[1] = (uint8_t)((BaudRate >> 8) & 0xFF);
-    kiss->buffer[2] = (uint8_t)((BaudRate >> 16) & 0xFF);
-    kiss->buffer[3] = (uint8_t)((BaudRate >> 24) & 0xFF);
-    kiss->index = 4;
-    kiss->Status = KISS_STATUS_TRANSMITTING;
+    uint8_t payData[4];
+    size_t len = 4;
 
-    return kiss_encode_and_send(kiss, kiss->buffer, &(kiss->index), KISS_HEADER_SPEED);
+    payData[0] = (uint8_t)(BaudRate & 0xFF);
+    payData[1] = (uint8_t)((BaudRate >> 8) & 0xFF);
+    payData[2] = (uint8_t)((BaudRate >> 16) & 0xFF);
+    payData[3] = (uint8_t)((BaudRate >> 24) & 0xFF);
+
+    return kiss_encode_and_send(kiss, payData, &len, KISS_HEADER_SPEED);
 }
 
 /**
@@ -472,6 +479,7 @@ int kiss_send_ack(kiss_instance_t *kiss)
         return KISS_ERR_INVALID_PARAMS;
     if(kiss->buffer_size < 3)
         return KISS_ERR_BUFFER_OVERFLOW;
+
 
     kiss->buffer[0] = KISS_FEND;
     kiss->buffer[1] = KISS_HEADER_ACK;

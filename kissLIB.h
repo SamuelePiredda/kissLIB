@@ -185,6 +185,7 @@ struct kiss_instance_t {
 
 
 
+
 /** Initialize a `kiss_instance_t`.
  *
  * Parameters:
