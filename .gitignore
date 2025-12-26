@@ -3,7 +3,7 @@
 
 # no main file used for testing
 main.exe
-
+main.c
 
 # no obj files
 *.o
