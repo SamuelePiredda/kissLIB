@@ -91,7 +91,7 @@ int kiss_encode(kiss_instance_t *kiss, uint8_t *data, size_t *length, const uint
 {
     if (kiss == NULL || data == NULL || length == 0) return KISS_ERR_INVALID_PARAMS;
     if(kiss->buffer_size < 3) return KISS_ERR_BUFFER_OVERFLOW;
-
+    if(*length + 3 > kiss->buffer_size) return KISS_ERR_BUFFER_OVERFLOW;
     /*  Start of frame with header
         if header is NULL use default 0x00 header for data
         if header is not NULL use the provided header value from the caller
