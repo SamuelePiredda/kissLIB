@@ -1,6 +1,10 @@
 # no exe
 *.exe
 
+# no main file used for testing
+main.exe
+
+
 # no obj files
 *.o
 
