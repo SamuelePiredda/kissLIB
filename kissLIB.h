@@ -95,13 +95,13 @@ int kiss_verify_crc32(const uint8_t *data, size_t len, uint32_t expected_crc);
  * - KISS_RECEIVED: frame has been received.
  * - KISS_RECEIVED_ERROR: error occurred during frame reception.
  */
-#define KISS_NOTHING 0x00           // No frame activity
-#define KISS_TRANSMITTING 0x01      // Frame is ready to be transmitted
-#define KISS_TRANSMITTED 0x02       // Frame has been transmitted
-#define KISS_RECEIVING 0x03         // Frame is ready to be received
-#define KISS_RECEIVED 0x04          // Frame has been received
-#define KISS_RECEIVED_ERROR 0x05    // Frame received error
-#define KISS_ERROR_STATE 0x06      // General error state
+#define KISS_STATUS_NOTHING 0x00           // No frame activity
+#define KISS_STATUS_TRANSMITTING 0x01      // Frame is ready to be transmitted
+#define KISS_STATUS_TRANSMITTED 0x02       // Frame has been transmitted
+#define KISS_STATUS_RECEIVING 0x03         // Frame is ready to be received
+#define KISS_STATUS_RECEIVED 0x04          // Frame has been received
+#define KISS_STATUS_RECEIVED_ERROR 0x05    // Frame received error
+#define KISS_STATUS_ERROR_STATE 0x06      // General error state
 
 
 
@@ -123,7 +123,7 @@ int kiss_verify_crc32(const uint8_t *data, size_t len, uint32_t expected_crc);
 #define KISS_HEADER_SPEED 0x60
 #define KISS_HEADER_PING 0x80
 #define KISS_HEADER_ACK 0xA0
-#define KISS_HEADER_NACK 0xC0
+#define KISS_HEADER_NACK 0xA5
 
 
 
@@ -232,7 +232,7 @@ int kiss_encode(kiss_instance_t *kiss, uint8_t *data, size_t *length, const uint
  *
  * Returns: 0 on success or a KISS_ERR_* code on failure.
  */
-int kiss_decode(kiss_instance_t *kiss, uint8_t *output, size_t *output_length, uint8_t *header);
+int kiss_decode(kiss_instance_t *kiss, uint8_t *output, size_t output_max_size, size_t *output_length, uint8_t *header);
 
 
 /** Send an encoded frame over the transport using the `write` callback.
@@ -321,7 +321,7 @@ int kiss_receive_frame(kiss_instance_t *kiss, uint32_t maxAttempts);
  * - KISS_ERR_NO_DATA_RECEIVED if no complete frame is received within maxAttempts
  * - generic error code from transport read function on failure
  */
-int kiss_receive_and_decode(kiss_instance_t *kiss, uint8_t *output, size_t *output_length, uint32_t maxAttempts, uint8_t *header);
+int kiss_receive_and_decode(kiss_instance_t *kiss, uint8_t *output, size_t output_max_size, size_t *output_length, uint32_t maxAttempts, uint8_t *header);
 
 
 
@@ -418,7 +418,7 @@ int kiss_send_ping(kiss_instance_t *kiss);
  * - header: KISS header byte to use.
  * Returns: 0 on success, or an error code (invalid params or buffer overflow).
  */
-int kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *data, size_t *length, const uint8_t header);
+int kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *data, size_t *length, const uint8_t header, size_t max_out_size);
 
 
 
@@ -440,7 +440,7 @@ int kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *data, size_t *length, cons
  *  - KISS_ERR_INVALID_PARAMS for bad pointers
  *  - KISS_ERR_INVALID_FRAME for malformed frames or bad escape sequences
  */
-int kiss_decode_crc32(kiss_instance_t *kiss, uint8_t *output, size_t *output_length, uint8_t *header);
+int kiss_decode_crc32(kiss_instance_t *kiss, uint8_t *output, size_t max_out_size, size_t *output_length, uint8_t *header);
 
 
 #ifdef __cplusplus

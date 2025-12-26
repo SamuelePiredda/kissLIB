@@ -34,25 +34,25 @@ void printKissStatus(uint8_t status)
 {
     switch(status)
     {
-        case KISS_NOTHING:
+        case KISS_STATUS_NOTHING:
             printf("KISS_NOTHING\n");
             break;
-        case KISS_TRANSMITTING:
+        case KISS_STATUS_TRANSMITTING:
             printf("KISS_TRANSMITTING\n");
             break;
-        case KISS_TRANSMITTED:
+        case KISS_STATUS_TRANSMITTED:
             printf("KISS_TRANSMITTED\n");
             break;
-        case KISS_RECEIVING:
+        case KISS_STATUS_RECEIVING:
             printf("KISS_RECEIVING\n");
             break;
-        case KISS_RECEIVED:
+        case KISS_STATUS_RECEIVED:
             printf("KISS_RECEIVED\n");
             break;
-        case KISS_RECEIVED_ERROR:
+        case KISS_STATUS_RECEIVED_ERROR:
             printf("KISS_RECEIVED_ERROR\n");
             break;
-        case KISS_ERROR_STATE:
+        case KISS_STATUS_ERROR_STATE:
             printf("KISS_ERROR_STATE\n");
             break;
         default:
@@ -142,7 +142,7 @@ int main()
     printKiss(&kiss);
 
     // Encode with CRC32
-    kiss_err = kiss_encode_crc32(&kiss, testData, &lenTest, KISS_HEADER_DATA(0));
+    kiss_err = kiss_encode_crc32(&kiss, testData, &lenTest, KISS_HEADER_DATA(0), 1024);
 
 
     printKiss(&kiss);
@@ -153,12 +153,17 @@ int main()
     // Simulate receiving the same data (for testing, we use the same buffer)
     kiss.buffer[2] = 0x43; // Corrupt data for testing
 
+    kiss.Status = KISS_STATUS_RECEIVED;
+
     printKiss(&kiss);
 
     // Receive and decode with CRC32 verification
-    kiss_err = kiss_decode_crc32(&kiss, output, &len, &header);
+    kiss_err = kiss_decode_crc32(&kiss, output, 1024, &len, &header);
 
     printKiss(&kiss);
+
+    for(int i = 0; i < len; i++)
+        printf("%02X ", output[i]);
         
     // Print any error
     if(kiss_err != 0)
