@@ -20,7 +20,7 @@ extern "C" {
  * -----------------------
  * Initialize the CRC32 lookup table.   
  */
-void kiss_init_crc32_table();
+static void kiss_init_crc32_table();
 
 /** 
  * kiss_crc32
@@ -442,6 +442,8 @@ int kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *data, size_t *length, cons
  *  - KISS_ERR_INVALID_FRAME for malformed frames or bad escape sequences
  */
 int kiss_decode_crc32(kiss_instance_t *kiss, uint8_t *output, size_t max_out_size, size_t *output_length, uint8_t *header);
+
+
 
 
 #ifdef __cplusplus

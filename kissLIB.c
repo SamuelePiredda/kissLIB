@@ -209,7 +209,6 @@ int kiss_decode(kiss_instance_t *kiss, uint8_t *output, size_t output_max_size, 
     }
 
     *output_length = out_index;
-    kiss->index = 0; /* reset index after decoding */
     return 0;
 }
 
@@ -325,41 +324,19 @@ int kiss_receive_frame(kiss_instance_t *kiss, uint32_t maxAttempts)
             if (!frame_started)
             {
                 if (byte == KISS_FEND)
-                {
-                    kiss->buffer[kiss->index++] = byte;                    
                     frame_started = 1;
-                }
                 continue; 
             }
-
-            // overflow check
-            if (kiss->index >= kiss->buffer_size)
-            {
-                kiss->Status = KISS_STATUS_RECEIVED_ERROR;
-                kiss->index = 0;
-                return KISS_ERR_BUFFER_OVERFLOW;
-            }
-            
-            // Store byte arrived in buffer with index increment
-            kiss->buffer[kiss->index++] = byte;
-
+           
             if (byte == KISS_FEND)
             {
-                if (kiss->index == 2) 
-                {
-                    kiss->index = 1; 
-                }
-                else 
-                {
-                    kiss->Status = KISS_STATUS_RECEIVED;
-                    kiss->index++;
-                    return 0;
-                }
-            }
-
+                kiss->Status = KISS_STATUS_RECEIVED;
+                kiss->index = i;
+                return 0;
+            }        
         }
         kiss->index = 0;
-        return KISS_ERR_INVALID_FRAME;
+        return KISS_ERR_NO_DATA_RECEIVED;
     }
 
     return KISS_ERR_NO_DATA_RECEIVED;
@@ -425,7 +402,7 @@ int kiss_set_TXdelay(kiss_instance_t *kiss, uint8_t tx_delay)
     if(kiss->buffer_size < 4)
         return KISS_ERR_BUFFER_OVERFLOW;
 
-    kiss->TXdelay = tx_delay*10;
+    kiss->TXdelay = tx_delay;
 
     uint8_t payData = tx_delay;
     size_t len = 1;
@@ -547,7 +524,7 @@ int kiss_send_ping(kiss_instance_t *kiss)
  * -----------------------
  * Initialize the CRC32 lookup table.   
  */
-void kiss_init_crc32_table()
+static void kiss_init_crc32_table()
 {
     uint32_t polynomial = 0xEDB88320;
     for (uint32_t i = 0; i < 256; i++) 
