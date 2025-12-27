@@ -1,7 +1,10 @@
-// Using with Arduino Uno
-// 7348 byte (22%) with 32,256 byte max
-// 802 byte (39%) with 2048 byte max
-
+/* Using with Arduino Uno
+* 7348 byte (22%) with 32,256 byte max
+* 802 byte (39%) with 2048 byte max
+* Uses LM75B temperature sensors and read it every MEASURE_DELAY milliseconds and then
+* it sends the value to the other device via kiss UART.
+* The other device can change the delay.
+*/
 #include <Wire.h>
 #include <SoftwareSerial.h>
 #include "kissLIB.h"
