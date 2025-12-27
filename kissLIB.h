@@ -419,7 +419,7 @@ int kiss_send_ping(kiss_instance_t *kiss);
  * - header: KISS header byte to use.
  * Returns: 0 on success, or an error code (invalid params or buffer overflow).
  */
-int kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *data, size_t *length, const uint8_t header, size_t max_out_size);
+int kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *data, size_t *length, uint8_t header);
 
 
 

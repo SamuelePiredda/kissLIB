@@ -584,14 +584,14 @@ int kiss_verify_crc32(const uint8_t *data, size_t len, uint32_t expected_crc)
 
 
 
-int kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *data, size_t *length, const uint8_t header, size_t max_out_size)
+int kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *data, size_t *length, uint8_t header)
 {
     // Check for null pointers or invalid input length
     if (kiss == NULL || data == NULL || length == NULL || *length == 0) 
         return KISS_ERR_INVALID_PARAMS;
 
     // Safety check: ensure the internal buffer size matches the provided max_out_size
-    if (max_out_size > kiss->buffer_size) 
+    if (*length > kiss->buffer_size) 
         return KISS_ERR_BUFFER_OVERFLOW;
 
     // 1. Calculate CRC32 on ORIGINAL data before any KISS encoding
@@ -612,25 +612,25 @@ int kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *data, size_t *length, cons
         
         if (b == KISS_FEND)
         {
-            if (kiss->index + 2 >= max_out_size) return KISS_ERR_BUFFER_OVERFLOW;
+            if (kiss->index + 2 >= kiss->buffer_size) return KISS_ERR_BUFFER_OVERFLOW;
             kiss->buffer[kiss->index++] = KISS_FESC;
             kiss->buffer[kiss->index++] = KISS_TFEND;
         }
         else if (b == KISS_FESC)
         {
-            if (kiss->index + 2 >= max_out_size) return KISS_ERR_BUFFER_OVERFLOW;
+            if (kiss->index + 2 >= kiss->buffer_size) return KISS_ERR_BUFFER_OVERFLOW;
             kiss->buffer[kiss->index++] = KISS_FESC;
             kiss->buffer[kiss->index++] = KISS_TFESC;
         }
         else
         {
-            if (kiss->index + 1 >= max_out_size) return KISS_ERR_BUFFER_OVERFLOW;
+            if (kiss->index + 1 >= kiss->buffer_size) return KISS_ERR_BUFFER_OVERFLOW;
             kiss->buffer[kiss->index++] = b;
         }
     }
 
     // 5. Re-add the final frame terminator (FEND)
-    if (kiss->index + 1 > max_out_size) return KISS_ERR_BUFFER_OVERFLOW;
+    if (kiss->index + 1 > kiss->buffer_size) return KISS_ERR_BUFFER_OVERFLOW;
     kiss->buffer[kiss->index++] = KISS_FEND;
 
     // 6. Update the final length of the encoded frame
