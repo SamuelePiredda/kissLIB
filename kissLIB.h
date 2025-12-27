@@ -136,7 +136,12 @@ typedef struct kiss_instance_t kiss_instance_t;
  *
  * Implementations should block or buffer as appropriate for the platform.
  * Parameters:
- *  - byte: data byte to send.
+ *  - kiss: kiss instance, inside the instnace there is the context variable for using specific physical layers
+ *  - data: payload data array to be written
+ *  - length: payload data array length to be written
+ * Returns:
+ *  - 0 if everything went good
+ *  - Any other number for error
  */
 typedef int (*kiss_write_fn)(kiss_instance_t *kiss, uint8_t *data, size_t length);
 
@@ -145,8 +150,13 @@ typedef int (*kiss_write_fn)(kiss_instance_t *kiss, uint8_t *data, size_t length
  * The library calls this with small lengths (typically 1). Implementations
  * should attempt to return exactly `length` bytes (may block).
  * Parameters:
- *  - data: destination buffer.
- *  - length: number of bytes requested.
+ *  - kiss: kiss instance, inside the instance there is the context variable for using specific physical layers
+ *  - buffer: buffer array where the data arrived is written
+ *  - dataLen: maximum data length of the buffer array
+ *  - read: real number of bytes read in the buffer
+ * Returns:
+ *  - 0 if everything went good
+ *  - Any other number for error
  */
 typedef int (*kiss_read_fn)(kiss_instance_t *kiss, uint8_t *buffer, size_t dataLen, size_t *read);
 
@@ -164,6 +174,7 @@ typedef int (*kiss_read_fn)(kiss_instance_t *kiss, uint8_t *buffer, size_t dataL
  *  - speed: configured baud rate in bits per second.
  *  - write/read: user transport callbacks.
  *  - Status: current frame status (KISS_NOTHING, KISS_TRANSMITTING, etc).
+ *  - context: context used in the write/read functions (for instance: context for UART, I2C, SPI, etc..)
  *
  * Notes:
  *  - The library uses the caller's buffer; it does not allocate memory.
@@ -228,6 +239,7 @@ int kiss_encode(kiss_instance_t *kiss, uint8_t *data, size_t *length, const uint
  * Parameters:
  *  - kiss: instance containing an encoded frame and `kiss->index` set.
  *  - output: buffer to receive decoded payload bytes.
+ *  - output_max_size: maximum size of the output buffer.
  *  - output_length: pointer to receive number of decoded bytes.
  *  - header: optional pointer to receive the KISS header byte (may be NULL).
  *
@@ -257,7 +269,7 @@ int kiss_send_frame(kiss_instance_t *kiss);
  * ----------------------
  * Encode `length` bytes from `data` into the instance working buffer and send it.
  * * Behavior:
- *  - Calls kiss_encode to encode the data into kiss->buffer.
+ * - Calls kiss_encode to encode the data into kiss->buffer.
  * - Calls kiss_send_frame to send the encoded frame.
  * Parameters:
  * - kiss: initialized instance.
@@ -283,9 +295,7 @@ int kiss_encode_and_send(kiss_instance_t *kiss, uint8_t *data, size_t *length, u
  *
  * Parameters:
  *  - kiss: instance with working buffer and `read` callback.
- *  - output: buffer to receive decoded payload bytes.
- *  - output_length: pointer to receive number of decoded bytes.
- *
+ *  - maxAttempts: maximum number of attempts of reading bytes
  * Behavior:
  *  - Calls the `read` callback repeatedly to read bytes.
  *  - Assembles bytes into `kiss->buffer` until a full frame is received.
@@ -310,6 +320,7 @@ int kiss_receive_frame(kiss_instance_t *kiss, uint32_t maxAttempts);
  * Parameters:
  *  - kiss: instance with working buffer and `read` callback.
  *  - output: buffer to receive decoded payload bytes.
+ *  - output_max_size: maximum size of the output buffer
  *  - output_length: pointer to receive number of decoded bytes.
  *  - maxAttempts: maximum number of read attempts before giving up.
  *  - header: optional pointer to receive the KISS header byte (may be NULL).
@@ -393,7 +404,7 @@ int kiss_send_nack(kiss_instance_t *kiss);
 /** 
  * kiss_send_ping
  * -----------------
- * Send a PING control frame.
+ * Send a PING control frame. The device that has been pinged must respond with an ACK
  * Parameters:
  * - kiss: initialized instance.
  * Returns:
@@ -415,7 +426,7 @@ int kiss_send_ping(kiss_instance_t *kiss);
  * Parameters:
  * - kiss: initialized instance.
  * - data: payload to encode.
- * - length: payload length in bytes.
+ * - length: payload length in bytes. the variable is updated with the real length written in the buffer
  * - header: KISS header byte to use.
  * Returns: 0 on success, or an error code (invalid params or buffer overflow).
  */
@@ -433,6 +444,7 @@ int kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *data, size_t *length, uint
  * Parameters:
  *  - kiss: instance containing encoded frame data
  *  - output: buffer to receive decoded payload
+ *  - max_out_size: is the maximum output buffer size
  *  - output_length: pointer to variable that will receive decoded length
  *  - header: optional pointer to receive the KISS header byte (may be NULL)
  *

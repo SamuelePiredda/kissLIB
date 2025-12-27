@@ -43,19 +43,19 @@ Each kiss_instance_t use one buffer for input/output. This buffer allocation is 
 const size_t len = 1024;
 uint8_t buffer_kiss[len];
 ```
-If you plan to transmit packets that are X long, you have to create a buffer which is X + 2 (FEND) + 1 (header) + X. This takes into account the worst case scenario when you have to transmit only special characters. For instance, if you want to transmit 256 bytes  per packet, please use at least 515 bytes as buffer, but in the example above 1024 bytes have been used in order to be in safe zone. If you use static allocation and you have buffer overflow you can't change the amount of memory allocated without changing the program.
+If you plan to transmit packets that are X long, you have to create a buffer which is X + 2 (FEND) + 1 (header) + X (if you want to use CRC32 you need also to take into account +4 bytes for CRC32 at the end of the packet). This takes into account the worst case scenario when you have to transmit only special characters. For instance, if you want to transmit 256 bytes  per packet, please use at least 515 bytes as buffer, but in the example above 1024 bytes have been used in order to be in safe zone. If you use static allocation and you have buffer overflow you can't change the amount of memory allocated without changing the program.
 
 
 If you want to send data, use the encode function to encode the data previous to sending
 ```C
 int kiss_encode(kiss_instance_t *kiss, const uint8_t *data, 
-            uint16_t length, const uint8_t header);
+            size_t *length, const uint8_t header);
 ```
 
 After you have received a frame use this function to decode the data 
 ```C
-int kiss_decode(kiss_instance_t *kiss, uint8_t *output, 
-            uint16_t *output_length, uint8_t *header);
+int kiss_decode(kiss_instance_t *kiss, uint8_t *output, size_t output_max_size
+            size_t *output_length, uint8_t *header);
 ```
 
 After the data that you want to send has been encoded use this function to send it
@@ -82,14 +82,14 @@ To quickly encode and send or receive and decode use the following functions
 ```C
 int kiss_encode_and_send(kiss_instance_t *kiss, const uint8_t *data, 
             uint16_t length, const uint8_t header)
-int kiss_receive_and_decode(kiss_instance_t *kiss, uint8_t *output, 
-            uint16_t *output_length, uint32_t maxAttempts, uint8_t *header)
+int kiss_receive_and_decode(kiss_instance_t *kiss, uint8_t *output, size_t output_max_size,
+            size_t *output_length, uint32_t maxAttempts, uint8_t *header)
 ```
 
 The following functions encode and decode the data with four more bytes for CRC32 at the end of the frame.
 ```C
 int kiss_decode_crc32(kiss_instance_t *kiss, uint8_t *output, 
                     size_t *output_length, uint8_t *header);
-int kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *data, 
+int kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *output, size_t max_output_size,
                     size_t *length, const uint8_t header);
 ```
