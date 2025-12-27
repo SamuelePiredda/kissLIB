@@ -90,6 +90,8 @@ The following functions encode and decode the data with four more bytes for CRC3
 ```C
 int kiss_decode_crc32(kiss_instance_t *kiss, uint8_t *output, 
                     size_t *output_length, uint8_t *header);
-int kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *output, size_t max_output_size,
+int kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *data,
                     size_t *length, const uint8_t header);
+int kiss_encode_send_crc32(kiss_instance_t *kiss, uint8_t *data, 
+                    size_t *length, uint8_t header)
 ```
