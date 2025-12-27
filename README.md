@@ -17,7 +17,7 @@ This is the struct containing the instance of the kiss communication protocol: t
 typedef struct 
 {
     uint8_t *buffer;
-    uint16_t buffer_size;
+    size_t buffer_size;
     size_t index;
     uint8_t TXdelay;
     kiss_write_fn write;

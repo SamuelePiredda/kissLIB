@@ -434,6 +434,26 @@ int kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *data, size_t *length, uint
 
 
 
+
+
+/**
+ * kiss_encode_send_crc32
+ * -------------------------
+ * Encode the data, put CRC32 at the end of the frame and then send it
+ * Behavior:
+ * - Encode the data and put CRC32 of the data at the end of the frame.
+ * - Write the frame in the link
+ * Parameters:
+ * - kiss: initialization instance
+ * - data: data payload array to encapsulate, encode and send
+ * - length: length of the payload array to send, the length is changed with the real bytes that have been sent
+ * - header: header byte
+ * Returns:
+ * 0 on success, or an error code not equal to zero
+ */
+int kiss_encode_send_crc32(kiss_instance_t *kiss, uint8_t *data, size_t *length, uint8_t header);
+
+
 /** 
  * kiss_decode_crc32
  * -----------------------
