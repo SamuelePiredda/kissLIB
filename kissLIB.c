@@ -168,13 +168,6 @@ int kiss_decode(kiss_instance_t *kiss, uint8_t *output, size_t output_max_size, 
 
         uint8_t byte = kiss->buffer[i];
 
-        /* Validate frame start/end positions */
-        if (i == 0 && byte != KISS_FEND)
-            return KISS_ERR_INVALID_FRAME;
-
-        if (i == kiss->index - 1 && byte != KISS_FEND)
-            return KISS_ERR_INVALID_FRAME;
-
         /* The second byte is the per-frame header (skip into 'header') */
         if (i == 1)
         {
