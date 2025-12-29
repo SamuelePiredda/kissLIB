@@ -14,49 +14,6 @@ extern "C" {
 
 
 
-/**< Initialize the CRC32 lookup table.
- * -----------------------
- * kiss_init_crc32_table
- * -----------------------
- * Initialize the CRC32 lookup table.   
- */
-static void kiss_init_crc32_table();
-
-/** 
- * kiss_crc32
- * -----------------------
- * Compute the CRC32 checksum for the given data.
- *
- * Parameters:
- *  - data: pointer to input data
- *  - len: length of input data in bytes
- *
- * Returns:
- *  - CRC32 checksum
- */
-uint32_t kiss_crc32(const uint8_t *data, size_t len);
-
-/**
- * kiss_verify_crc32
- * -----------------------
- * Verify the CRC32 checksum for the given data.
- *
- * Parameters:
- *  - data: pointer to input data
- *  - len: length of input data in bytes
- *  - expected_crc: expected CRC32 checksum
- *
- * Returns:
- *  - 1 if checksum matches, 0 otherwise
- */
-int kiss_verify_crc32(const uint8_t *data, size_t len, uint32_t expected_crc);
-
-
-
-
-
-
-
 /** KISS protocol special byte values
  *
  * KISS frames are delimited by the FEND byte. If the payload contains
@@ -189,8 +146,52 @@ struct kiss_instance_t {
     kiss_write_fn write;
     kiss_read_fn read;
     uint8_t Status;
+    uint8_t CRC32_Type;
     void *context;
 };
+
+
+
+
+
+
+
+
+/** 
+ * kiss_crc32
+ * -----------------------
+ * Compute the CRC32 checksum for the given data.
+ *
+ * Parameters:
+ *  - data: pointer to input data
+ *  - len: length of input data in bytes
+ *
+ * Returns:
+ *  - CRC32 checksum
+ */
+uint32_t kiss_crc32(kiss_instance_t *kiss, const uint8_t *data, size_t len);
+
+/**
+ * kiss_verify_crc32
+ * -----------------------
+ * Verify the CRC32 checksum for the given data.
+ *
+ * Parameters:
+ *  - data: pointer to input data
+ *  - len: length of input data in bytes
+ *  - expected_crc: expected CRC32 checksum
+ *
+ * Returns:
+ *  - 1 if checksum matches, 0 otherwise
+ */
+int kiss_verify_crc32(kiss_instance_t *kiss, const uint8_t *data, size_t len, uint32_t expected_crc);
+
+
+
+
+
+
+
 
 
 
