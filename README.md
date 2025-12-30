@@ -97,7 +97,7 @@ int kiss_encode_send_crc32(kiss_instance_t *kiss, uint8_t *data,
 ```
 
 
-# Example on how to implement the library
+# How to implement the library
 
 
 You start by adding the include instruction, no other includes are required
@@ -131,5 +131,5 @@ In the setup function or region, initialize the kiss instance with the init func
 kiss_init(&kissI, buffer_kissI, 256, 1, write, read, context, 0);
 ...
 ```
-The parameters passed are the kiss instance; the buffer used by it; the maximum length of the buffer; the transmit delay after the 0-255 in milliseconds (which is multiplied by 10, so 0-2550 ms); write callback function written by the user; read callback function written by the user; context needed for writing/reading if needed (for example if the instnace of I2C or UART is needed by the callback functions); the number of padding/sync bytes to send before the frame.
+The parameters passed are the kiss instance; the buffer used by it; the maximum length of the buffer; the transmit delay after the 0-255 in milliseconds (which is multiplied by 10, so 0-2550 ms); write callback function written by the user; read callback function written by the user; context needed for writing/reading if needed (for example if the instnace of I2C or UART is needed by the callback functions); the number of padding/sync bytes to send before the frame. This parameter can be set to zero.
 
