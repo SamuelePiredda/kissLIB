@@ -49,7 +49,12 @@ If you plan to transmit packets that are X long, you have to create a buffer whi
 If you want to send data, use the encode function to encode the data previous to sending
 ```C
 int kiss_encode(kiss_instance_t *kiss, const uint8_t *data, 
-            size_t *length, const uint8_t header);
+            size_t length, const uint8_t header);
+```
+
+If you want to add more data after you have used the kiss_encode function use this function here:
+```C
+int kiss_push_encode(kiss_instance_t *kiss, uint8_t *data, size_t length)
 ```
 
 After you have received a frame use this function to decode the data 
@@ -91,13 +96,13 @@ The following functions encode and decode the data with four more bytes for CRC3
 int kiss_decode_crc32(kiss_instance_t *kiss, uint8_t *output, 
                     size_t *output_length, uint8_t *header);
 int kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *data,
-                    size_t *length, const uint8_t header);
+                    size_t length, const uint8_t header);
 int kiss_encode_send_crc32(kiss_instance_t *kiss, uint8_t *data, 
-                    size_t *length, uint8_t header)
+                    size_t length, uint8_t header)
 ```
 
 
-# How to implement the library
+# How to implement the library, simple example
 
 
 You start by adding the include instruction, no other includes are required
@@ -117,8 +122,10 @@ To use the kiss instance you need two buffers. One is used by the kiss instance 
 uint8_t buffer_kissI[256];
 uint8_t kissI_out[128];
 uint8_t kissI_out_index = 0;
+int kiss_err = 0;
 ```
 The **buffer** array is used by the instance while the **kissI_out** is used to store output payload data when received. It is important to know in advance the maximum length of the frame and use some safe coefficent. If you expect **64** data bytes for each frame, 3 more bytes are needed for frame encapsulation, and the worst case scenario is that all 64 bytes are special, hence they become 128 bytes. The worst case scenario is 131 bytes. If use padding bytes at the start the length is even greater. So in this case **256** bytes are more than enough.
+The integer for errors is declared.
 
 Then you can initialize a header variable which will be set when a frame arrives.
 ```C
@@ -128,8 +135,55 @@ uint8_t kissI_header;
 In the setup function or region, initialize the kiss instance with the init function.
 ```C
 ...
-kiss_init(&kissI, buffer_kissI, 256, 1, write, read, context, 0);
+kiss_err = kiss_init(&kissI, buffer_kissI, 256, 1, write, read, context, 0);
+if(kiss_err != 0)
+{
+    // ERROR MANAGEMENT
+}
 ...
 ```
 The parameters passed are the kiss instance; the buffer used by it; the maximum length of the buffer; the transmit delay after the 0-255 in milliseconds (which is multiplied by 10, so 0-2550 ms); write callback function written by the user; read callback function written by the user; context needed for writing/reading if needed (for example if the instnace of I2C or UART is needed by the callback functions); the number of padding/sync bytes to send before the frame. This parameter can be set to zero.
 
+The software does whatever it has to do, for example reads three temperatures as byte (it can go from -128 to +127°C with 1°C precision). These three temperatures are the following:
+```C
+...
+int8_t temp1 = 29;
+int8_t temp2 = 27;
+int8_t temp3 = 31;
+...
+```
+
+start encoding the first variable
+
+```C
+kiss_err = kiss_encode(&kiss, (uint8_t*)&temp1, 1, KISS_HEADER_DATA(0));
+if(kiss_err != 0)
+{
+    // ERROR MANAGEMENT
+}
+```
+
+the parameters that have been passed to the function are the kiss instance, the first variable, the length which is one byte and the header which is data frame with port 0.
+Then you push the other two temperature as follows:
+```C
+kiss_err = kiss_push_encode(&kiss, (uint8_t*)&temp2, 1);
+if(kiss_err != 0)
+{
+    // ERROR MANAGEMENT
+}
+kiss_err = kiss_push_encode(&kiss, (uint8_t*)&temp3, 1);
+if(kiss_err != 0)
+{
+    // ERROR MANAGEMENT
+}
+```
+
+after the data has been encoded it can be sent to the other device:
+
+```C
+kiss_err = kiss_send_frame(&kiss);
+if(kiss_err != 0)
+{
+    // ERROR MANAGEMENT
+}
+```

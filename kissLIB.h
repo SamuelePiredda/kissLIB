@@ -229,10 +229,23 @@ int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, size_t buffer_size, uint8_
  *
  * Returns: 0 on success, or an error code (invalid params or buffer overflow).
  */
-int kiss_encode(kiss_instance_t *kiss, uint8_t *data, size_t *length, const uint8_t header);
+int kiss_encode(kiss_instance_t *kiss, uint8_t *data, size_t length, const uint8_t header);
 
 
 
+/**
+ * kiss_push_encode
+ * ------------------
+ * push more data inside an already encoded payload
+ * Parameters:
+ * - kiss: kiss instance
+ * - data: data to add at the end of the payload 
+ * - length: size of the data to add, if all are added the value is not changed.
+ * Returns:
+ * - 0, if everything is ok
+ * - Any other number from KISS_ERR_xxx if an error occoured
+ */
+int kiss_push_encode(kiss_instance_t *kiss, uint8_t *data, size_t length);
 
 
 
@@ -284,7 +297,7 @@ int kiss_send_frame(kiss_instance_t *kiss);
  * - KISS_ERR_BUFFER_OVERFLOW if the provided working buffer is too small
  * - generic error code from kiss_send_frame on failure
  */
-int kiss_encode_and_send(kiss_instance_t *kiss, uint8_t *data, size_t *length, uint8_t header);
+int kiss_encode_and_send(kiss_instance_t *kiss, uint8_t *data, size_t length, uint8_t header);
 
 
 
@@ -432,7 +445,7 @@ int kiss_send_ping(kiss_instance_t *kiss);
  * - header: KISS header byte to use.
  * Returns: 0 on success, or an error code (invalid params or buffer overflow).
  */
-int kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *data, size_t *length, uint8_t header);
+int kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *data, size_t length, uint8_t header);
 
 
 
@@ -453,7 +466,7 @@ int kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *data, size_t *length, uint
  * Returns:
  * 0 on success, or an error code not equal to zero
  */
-int kiss_encode_send_crc32(kiss_instance_t *kiss, uint8_t *data, size_t *length, uint8_t header);
+int kiss_encode_send_crc32(kiss_instance_t *kiss, uint8_t *data, size_t length, uint8_t header);
 
 
 /** 
