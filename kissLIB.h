@@ -493,6 +493,18 @@ int kiss_decode_crc32(kiss_instance_t *kiss, uint8_t *output, size_t max_out_siz
 
 
 
+
+#ifdef KISS_DEBUG
+
+/* if the debug is active use this function to plot the kiss instance */
+void kiss_debug(kiss_instance_t *kiss);
+
+
+#endif
+
+
+
+
 #ifdef __cplusplus
 }
 #endif

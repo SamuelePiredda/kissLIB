@@ -102,6 +102,13 @@ int kiss_encode_send_crc32(kiss_instance_t *kiss, uint8_t *data,
 ```
 
 
+Add the **#define KISS_DEBUG** directive to have access to the function which prints out the instance for debug
+ ```C
+void kiss_debug(kiss_instance_t *kiss)
+```
+
+
+
 # How to implement the library, simple example
 
 

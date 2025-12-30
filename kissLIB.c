@@ -920,3 +920,56 @@ int kiss_encode_send_crc32(kiss_instance_t *kiss, uint8_t *data, size_t length, 
 
     return kiss_send_frame(kiss);
 }
+
+
+
+
+
+#ifdef KISS_DEBUG
+
+/* if the debug is active use this function to plot the kiss instance */
+void kiss_debug(kiss_instance_t *kiss)
+{
+    printf("------- STATUS -------\n");
+    printf("Buffer size\t%d\n", kiss->buffer_size);
+    printf("Buffer index\t%d\n", kiss->index);
+    printf("Buffer TXdelay\t%d (%d ms)\n", kiss->TXdelay, kiss->TXdelay*10);
+    printf("kiss status\t");
+    switch(kiss->Status)
+    {
+        case KISS_STATUS_ERROR_STATE:
+            printf("KISS_STATUS_ERROR_STATE");
+            break;
+        case KISS_STATUS_NOTHING:
+            printf("KISS_STATUS_NOTHING");
+            break;
+        case KISS_STATUS_RECEIVED:
+            printf("KISS_STATUS_RECEIVED");
+            break;
+        case KISS_STATUS_RECEIVED_ERROR:
+            printf("KISS_STATUS_RECEIVED_ERROR");
+            break;
+        case KISS_STATUS_RECEIVING:
+            printf("KISS_STATUS_RECEIVING");
+            break;
+        case KISS_STATUS_TRANSMITTED:
+            printf("KISS_STATUS_TRANSMITTED");
+            break;
+        case KISS_STATUS_TRANSMITTING:
+            printf("KISS_STATUS_TRANSMITTING");
+            break;
+        default:
+            printf("none");
+            break;
+    }
+    printf("\n");
+    
+    printf("BUFFER:\n");
+    for(int i = 0; i < kiss->index; i++)
+        printf("%02X ", kiss->buffer[i]);
+    printf("\n");
+    printf("----------------------\n");
+}
+
+
+#endif
