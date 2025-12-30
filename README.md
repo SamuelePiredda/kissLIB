@@ -116,7 +116,7 @@ To use the kiss instance you need two buffers. One is used by the kiss instance 
 ```C
 uint8_t buffer_kissI[256];
 uint8_t kissI_out[128];
-uint8:t kissI_out_index = 0;
+uint8_t kissI_out_index = 0;
 ```
 The **buffer** array is used by the instance while the **kissI_out** is used to store output payload data when received. It is important to know in advance the maximum length of the frame and use some safe coefficent. If you expect **64** data bytes for each frame, 3 more bytes are needed for frame encapsulation, and the worst case scenario is that all 64 bytes are special, hence they become 128 bytes. The worst case scenario is 131 bytes. If use padding bytes at the start the length is even greater. So in this case **256** bytes are more than enough.
 
