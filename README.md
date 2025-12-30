@@ -36,7 +36,7 @@ Then call the initialization function with all the necessary parameters
 ```C
 int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, 
                 uint8_t TXdelay, uint32_t BaudRate, kiss_write_fn write, 
-                kiss_read_fn read, void *context);
+                kiss_read_fn read, void *context, uint8_t padding);
 ```
 Each kiss_instance_t use one buffer for input/output. This buffer allocation is done by the user which can select the right amount of bytes to allocate to it. You can use static allocation or dynamic allocation.
 ```C
@@ -95,3 +95,41 @@ int kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *data,
 int kiss_encode_send_crc32(kiss_instance_t *kiss, uint8_t *data, 
                     size_t *length, uint8_t header)
 ```
+
+
+# Example on how to implement the library
+
+
+You start by adding the include instruction, no other includes are required
+```C
+#include "kissLIB.h"
+```
+
+Then, the core of the library is the **kiss_instance_t** which contains all the information used for the kiss comunication.
+Create the instance
+```C
+...
+kiss_instance_t kissI;
+...
+```
+To use the kiss instance you need two buffers. One is used by the kiss instance and the other one is to get the data when a frame is received.
+```C
+uint8_t buffer_kissI[256];
+uint8_t kissI_out[128];
+uint8:t kissI_out_index = 0;
+```
+The **buffer** array is used by the instance while the **kissI_out** is used to store output payload data when received. It is important to know in advance the maximum length of the frame and use some safe coefficent. If you expect **64** data bytes for each frame, 3 more bytes are needed for frame encapsulation, and the worst case scenario is that all 64 bytes are special, hence they become 128 bytes. The worst case scenario is 131 bytes. If use padding bytes at the start the length is even greater. So in this case **256** bytes are more than enough.
+
+Then you can initialize a header variable which will be set when a frame arrives.
+```C
+uint8_t kissI_header;
+```
+
+In the setup function or region, initialize the kiss instance with the init function.
+```C
+...
+kiss_init(&kissI, buffer_kissI, 256, 1, write, read, context, 0);
+...
+```
+The parameters passed are the kiss instance; the buffer used by it; the maximum length of the buffer; the transmit delay after the 0-255 in milliseconds (which is multiplied by 10, so 0-2550 ms); write callback function written by the user; read callback function written by the user; context needed for writing/reading if needed (for example if the instnace of I2C or UART is needed by the callback functions); the number of padding/sync bytes to send before the frame.
+
