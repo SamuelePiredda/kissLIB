@@ -42,7 +42,7 @@ int main()
             sending[i] = (uint8_t)(i % 256);
 
         // Initialize KISS instance
-        kiss_init(&kiss, buffer, buff_size, 1, write, NULL, NULL);
+        kiss_init(&kiss, buffer, buff_size, 1, write, NULL, NULL, 0);
 
         // error storage variable
         int err;

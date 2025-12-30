@@ -51,7 +51,7 @@ void setup()
   softSerial.begin(9600);
 
   // initialization of the kiss instance
-  kiss_init(&kiss, buffer, 128, 1, write, read, NULL);
+  kiss_init(&kiss, buffer, 128, 1, write, read, NULL, 0);
   
   // system initialized serial printing
   Serial.println(F("System Initialized..."));

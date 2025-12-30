@@ -42,6 +42,7 @@ extern "C" {
 #define KISS_ERR_NO_DATA_RECEIVED 4
 #define KISS_ERR_DATA_NOT_ENCODED 5
 #define KISS_ERR_CRC32_MISMATCH 6
+#define KISS_ERR_CALLBACK_MISSING 7
 
 /**
  * KISS frame direction indicators
@@ -146,8 +147,8 @@ struct kiss_instance_t {
     kiss_write_fn write;
     kiss_read_fn read;
     uint8_t Status;
-    uint8_t CRC32_Type;
     void *context;
+    uint8_t padding;
 };
 
 
@@ -211,7 +212,7 @@ int kiss_verify_crc32(kiss_instance_t *kiss, const uint8_t *data, size_t len, ui
  *
  * Returns: 0 on success or a KISS_ERR_* code on failure.
  */
-int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, size_t buffer_size, uint8_t TXdelay, kiss_write_fn write, kiss_read_fn read, void* context);
+int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, size_t buffer_size, uint8_t TXdelay, kiss_write_fn write, kiss_read_fn read, void* context, uint8_t padding);
 
 
 /** Encode `length` bytes from `data` into the instance working buffer.
