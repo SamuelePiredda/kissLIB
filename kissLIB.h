@@ -76,7 +76,7 @@ extern "C" {
  * - KISS_HEADER_NACK: control frame for negative acknowledgments. 0xC0
  * - Additional control frame types may be defined in the future.
  */
-#define KISS_HEADER_DATA(port) ((port & 0x0F) << 4 | 0x00)
+#define KISS_HEADER_DATA(port) ((uint8_t)(port & 0x0F))
 #define KISS_HEADER_TX_DELAY 0x10
 #define KISS_HEADER_SPEED 0x60
 #define KISS_HEADER_PING 0x80
@@ -428,6 +428,47 @@ int kiss_send_nack(kiss_instance_t *kiss);
  * - generic error code from kiss_send_frame on failure
  */
 int kiss_send_ping(kiss_instance_t *kiss);
+
+
+
+
+/*
+* kiss_send_param
+* -------------------
+* Send a parameter to the other device with specific header (not 0)
+* Parameters:
+* - kiss: initialized instance
+* - ID: 2 bytes for the ID of the param
+* - param: byte array witht the parameter to send
+* - len: number of bytes to send
+* - header: header to set. 00 is a generic data packet, you can implement a specific header like 0x05 (which means it contains a parameter)
+* Returns:
+* - 0 on success
+* - KISS_ERR_INVALID_PARAMS if inputs are invalid
+* - generic error code
+*/
+int kiss_send_param(kiss_instance_t *kiss, uint16_t ID, uint8_t *param, size_t len, uint8_t header);
+
+
+/*
+* kiss_send_param_crc32
+* -------------------
+* Send a parameter to the other device with specific header (not 0) with CRC32
+* Parameters:
+* - kiss: initialized instance
+* - ID: 2 bytes for the ID of the param
+* - param: byte array witht the parameter to send
+* - len: number of bytes to send
+* - header: header to set. 00 is a generic data packet, you can implement a specific header like 0x05 (which means it contains a parameter)
+* Returns:
+* - 0 on success
+* - KISS_ERR_INVALID_PARAMS if inputs are invalid
+* - generic error code
+*/
+int kiss_send_param_crc32(kiss_instance_t *kiss, uint16_t ID, uint8_t *param, size_t len, uint8_t header);
+
+
+
 
 
 

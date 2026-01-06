@@ -685,6 +685,8 @@ int kiss_send_nack(kiss_instance_t *kiss)
 {
     if (kiss == NULL)
         return KISS_ERR_INVALID_PARAMS;
+    if(kiss->buffer_size < 3) 
+        return KISS_ERR_BUFFER_OVERFLOW;
 
     kiss->buffer[0] = KISS_FEND;
     kiss->buffer[1] = KISS_HEADER_NACK;
@@ -710,6 +712,7 @@ int kiss_send_ping(kiss_instance_t *kiss)
 {
     if (kiss == NULL)
         return KISS_ERR_INVALID_PARAMS;
+    if(kiss->buffer_size < 3) return KISS_ERR_BUFFER_OVERFLOW;
 
     kiss->buffer[0] = KISS_FEND;
     kiss->buffer[1] = KISS_HEADER_PING;
@@ -719,6 +722,125 @@ int kiss_send_ping(kiss_instance_t *kiss)
 
     return kiss_send_frame(kiss);
 }
+
+
+
+
+
+/*
+* kiss_send_param
+* -------------------
+* Send a parameter to the other device with specific header (not 0)
+* --------
+* Parameters:
+* - kiss: initialized instance
+* - ID: 2 bytes for the ID of the param
+* - param: byte array witht the parameter to send
+* - len: number of bytes to send
+* - header: header to set. 00 is a generic data packet, you can implement a specific header like 0x05 (which means it contains a parameter)
+* -------
+* Returns:
+* - 0 on success
+* - KISS_ERR_INVALID_PARAMS if inputs are invalid
+* - generic error code
+*/
+int kiss_send_param(kiss_instance_t *kiss, uint16_t ID, uint8_t *param, size_t len, uint8_t header)
+{
+    if(kiss == NULL || param == NULL) return KISS_ERR_INVALID_PARAMS;
+    if(kiss->buffer_size < 5 + len) return KISS_ERR_BUFFER_OVERFLOW;
+    int err = 0;
+    
+    uint8_t id_[2] = {(uint8_t) ID, (uint8_t)(ID >> 8)};
+    
+    err = kiss_encode(kiss, id_, 2, header);
+    if(err != 0) return err;
+    
+    err = kiss_push_encode(kiss, param, len);
+    if(err != 0) return err;
+
+    kiss->Status = KISS_STATUS_TRANSMITTING;
+
+    return kiss_send_frame(kiss);
+}
+
+
+
+/*
+* kiss_send_param_crc32
+* -------------------
+* Send a parameter to the other device with specific header (not 0) with CRC32
+* Parameters:
+* - kiss: initialized instance
+* - ID: 2 bytes for the ID of the param
+* - param: byte array witht the parameter to send
+* - len: number of bytes to send
+* - header: header to set. 00 is a generic data packet, you can implement a specific header like 0x05 (which means it contains a parameter)
+* Returns:
+* - 0 on success
+* - KISS_ERR_INVALID_PARAMS if inputs are invalid
+* - generic error code
+*/
+int kiss_send_param_crc32(kiss_instance_t *kiss, uint16_t ID, uint8_t *param, size_t len, uint8_t header)
+{
+    /* check basic errors */
+    if(kiss == NULL || param == NULL) return KISS_ERR_INVALID_PARAMS;
+    if(kiss->buffer_size < 5 + len) return KISS_ERR_BUFFER_OVERFLOW;
+    /* error container */
+    int err = 0;
+    /* ID of the param split into two bytes */
+    uint8_t id_[2] = {(uint8_t) ID, (uint8_t)(ID >> 8)}; 
+    
+    /* encoding the ID */
+    err = kiss_encode(kiss, id_, 2, header);
+    if(err != 0) return err;
+    /* encoding the parameter */
+    err = kiss_push_encode(kiss, param, len);
+    if(err != 0) return err;
+    /* generate the CRC32 starting from the ID */
+    uint32_t crc = kiss_crc32(kiss, (uint8_t*)&kiss->buffer[2], len+2);
+
+    /* remove the trailing FEND to inject CRC bytes */
+    if (kiss->index < 1) return KISS_ERR_INVALID_FRAME;
+    kiss->index--;
+
+    /* add the 4 CRC bytes (Little Endian) with KISS escaping logic */
+    for (int i = 0; i < 4; i++)
+    {
+        uint8_t b = (crc >> (i * 8)) & 0xFF;
+        
+        if (b == KISS_FEND)
+        {
+            if (kiss->index + 2 >= kiss->buffer_size) return KISS_ERR_BUFFER_OVERFLOW;
+            kiss->buffer[kiss->index++] = KISS_FESC;
+            kiss->buffer[kiss->index++] = KISS_TFEND;
+        }
+        else if (b == KISS_FESC)
+        {
+            if (kiss->index + 2 >= kiss->buffer_size) return KISS_ERR_BUFFER_OVERFLOW;
+            kiss->buffer[kiss->index++] = KISS_FESC;
+            kiss->buffer[kiss->index++] = KISS_TFESC;
+        }
+        else
+        {
+            if (kiss->index + 1 >= kiss->buffer_size) return KISS_ERR_BUFFER_OVERFLOW;
+            kiss->buffer[kiss->index++] = b;
+        }
+    }
+
+    /* add again the final frame terminator (FEND) */
+    if (kiss->index + 1 > kiss->buffer_size) return KISS_ERR_BUFFER_OVERFLOW;
+    kiss->buffer[kiss->index++] = KISS_FEND;
+    /* status transmitting */
+    kiss->Status = KISS_STATUS_TRANSMITTING;
+    /* transmit and return */
+    return kiss_send_frame(kiss);
+}
+
+
+
+
+
+
 
 
 /** 
