@@ -13,6 +13,25 @@ extern "C" {
 #define KISSLIB_VERSION "2.0.0"
 
 
+/*
+    typedef union
+    {
+        uint8_t raw;
+        struct 
+        {
+            uint8_t command : 4;
+            uint8_t port : 4;
+        } parts;
+        
+    } kiss_header;
+    
+    kiss_header hd;
+
+    hd.parts.command = 4;
+    hd.parts.port = 5;
+*/
+
+
 /* some generic unions for useful data */
 typedef union 
 {
