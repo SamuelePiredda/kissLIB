@@ -13,6 +13,45 @@ extern "C" {
 #define KISSLIB_VERSION "2.0.0"
 
 
+/* some generic unions for useful data */
+typedef union 
+{
+    uint16_t value;
+    uint8_t bytes[sizeof(uint16_t)];
+} uint16_kiss;
+
+typedef union
+{
+    uint32_t value;
+    uint8_t bytes[sizeof(uint32_t)];
+} uint32_kiss;
+
+typedef union 
+{
+    int16_t value;
+    uint8_t bytes[sizeof(int16_t)];
+} int16_kiss;
+
+typedef union 
+{
+    int32_t value;
+    uint8_t bytes[sizeof(int32_t)];
+} int32_kiss;
+
+typedef union 
+{
+    float value;
+    uint8_t bytes[sizeof(float)];
+} float_kiss;
+
+typedef union
+{
+    double value;
+    uint8_t bytes[sizeof(double)];
+} double_kiss;
+
+
+
 
 /** KISS protocol special byte values
  *
