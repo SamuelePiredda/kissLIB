@@ -81,6 +81,8 @@ int kiss_set_speed(kiss_instance_t *kiss, uint32_t BaudRate);
 int kiss_send_ack(kiss_instance_t *kiss);
 int kiss_send_nack(kiss_instance_t *kiss);
 int kiss_send_ping(kiss_instance_t *kiss);
+int kiss_send_param(kiss_instance_t *kiss, uint16_t ID, 
+                    uint8_t *param, size_t len, uint8_t header)
 ```
 
 To quickly encode and send or receive and decode use the following functions
@@ -99,6 +101,9 @@ int kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *data,
                     size_t length, const uint8_t header);
 int kiss_encode_send_crc32(kiss_instance_t *kiss, uint8_t *data, 
                     size_t length, uint8_t header)
+int kiss_send_param_crc32(kiss_instance_t *kiss, uint16_t ID,
+                    uint8_t *param, size_t len, uint8_t header)
+
 ```
 
 
