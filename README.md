@@ -116,86 +116,149 @@ void kiss_debug(kiss_instance_t *kiss)
 
 # How to implement the library, simple example
 
+This example guides you step-by-step through the library integration, from definiing the callbacks to transmitting and receiving data.
+
 
 You start by adding the include instruction, no other includes are required
 ```C
 #include "kissLIB.h"
 ```
 
-Then, the core of the library is the **kiss_instance_t** which contains all the information used for the kiss comunication.
-Create the instance
-```C
-...
-kiss_instance_t kissI;
-...
-```
-To use the kiss instance you need two buffers. One is used by the kiss instance and the other one is to get the data when a frame is received.
-```C
-uint8_t buffer_kissI[256];
-uint8_t kissI_out[128];
-uint8_t kissI_out_index = 0;
-int kiss_err = 0;
-```
-The **buffer** array is used by the instance while the **kissI_out** is used to store output payload data when received. It is important to know in advance the maximum length of the frame and use some safe coefficent. If you expect **64** data bytes for each frame, 3 more bytes are needed for frame encapsulation, and the worst case scenario is that all 64 bytes are special, hence they become 128 bytes. The worst case scenario is 131 bytes. If use padding bytes at the start the length is even greater. So in this case **256** bytes are more than enough.
-The integer for errors is declared.
+## 1. Define hardware callbacks
 
-Then you can initialize a header variable which will be set when a frame arrives.
+First, tell the library how to send and read bytes from your hardware (e.g. UART, I2C etc..). Define two functions that match the kiss_write_fn and kiss_read_fn signatures.
 ```C
-uint8_t kissI_header;
-```
-
-In the setup function or region, initialize the kiss instance with the init function.
-```C
-...
-kiss_err = kiss_init(&kissI, buffer_kissI, 256, 1, write, read, context, 0);
-if(kiss_err != 0)
+// Write callback example (TX)
+// sends 'length' bytes from 'data' to the hardware
+int write_callback(kiss_instance_t *kiss, uint8_t *data, size_t length)
 {
-    // ERROR MANAGEMENT
+    /* All code for sending bytes
+    * if you need specific object you can call kiss->context pointer object
+    * return a number not zero if there is an error otherwise return 0
+    */
+    return 0;
 }
-...
-```
-The parameters passed are the kiss instance; the buffer used by it; the maximum length of the buffer; the transmit delay after the 0-255 in milliseconds (which is multiplied by 10, so 0-2550 ms); write callback function written by the user; read callback function written by the user; context needed for writing/reading if needed (for example if the instnace of I2C or UART is needed by the callback functions); the number of padding/sync bytes to send before the frame. This parameter can be set to zero.
 
-The software does whatever it has to do, for example reads three temperatures as byte (it can go from -128 to +127°C with 1°C precision). These three temperatures are the following:
-```C
-...
-int8_t temp1 = 29;
-int8_t temp2 = 27;
-int8_t temp3 = 31;
-...
-```
-
-start encoding the first variable
-
-```C
-kiss_err = kiss_encode(&kiss, (uint8_t*)&temp1, 1, KISS_HEADER_DATA(0));
-if(kiss_err != 0)
+// Read callback example (RX)
+// Reads up to 'dataLen' bytes and stores them in 'buffer'
+// updates 'readBytes' with the actual number of bytes read.
+int read_callback(kiss_instance_t *kiss, uint8_t *buffer, size_t dataLen, size_t *readBytes)
 {
-    // ERROR MANAGEMENT
+    /* 
+    * All code for receiving bytes
+    * please put a maximum waiting time
+    * update readBytes to the real number of bytes read
+    */
+    return 0;
 }
 ```
 
-the parameters that have been passed to the function are the kiss instance, the first variable, the length which is one byte and the header which is data frame with port 0.
-Then you push the other two temperature as follows:
+## 2. Create the buffer and instance
+
+The library does not use dynamic memory allocation in order to avoid any memory leaks or bug. You must provide a "working buffer" that 
+the library will use to build packets (adding FEND, FESC, CRC, etc..)
+
 ```C
-kiss_err = kiss_push_encode(&kiss, (uint8_t*)&temp2, 1);
+#define KISS_BUFFER_SIZE 1024
+
+// buffer and instance allocation
+uint8_t kiss_work_buffer[KISS_BUFFER_SIZE];
+kiss_instance_t my_kiss;
+// kiss errors will be allocated inside this variable
+int kiss_err;
+```
+
+
+## 3. Initialization
+
+Call **kiss_init** to configure the instance with the buffer and callbacks defined in step 1.
+
+```C
+kiss_err = kiss_init(&my_kiss,
+                     kiss_work_buffer,  // buffer allocated
+                     KISS_BUFFER_SIZE,  // its size
+                     1,                 // TX delay (1 = 10ms)
+                     write_callback,    // write callback function
+                     read_callback,     // read callback function
+                     NULL,              // context (optional, useful for HAL drivers)
+                     0                  // padding (usually 0)
+                    );
 if(kiss_err != 0)
 {
-    // ERROR MANAGEMENT
-}
-kiss_err = kiss_push_encode(&kiss, (uint8_t*)&temp3, 1);
-if(kiss_err != 0)
-{
-    // ERROR MANAGEMENT
+    /* error handling */
 }
 ```
 
-after the data has been encoded it can be sent to the other device:
+## 4. Sending data (encoding + sending)
+
+To send data, first encode the payload into the internal buffer (**kiss_encode**) and then physically send it (**kiss_send_frame**).
+
 
 ```C
-kiss_err = kiss_send_frame(&kiss);
+char *msg = "Hello,World!";
+/* 1. encode the message into the internal buffer
+*  KISS_HEADER_DATA(0) indicates a data packet on port 0
+*/
+kiss_err = kiss_encode(&my_kiss, (uint8_t*)msg, strlen(msg), KISS_HEADER_DATA(0));
 if(kiss_err != 0)
 {
-    // ERROR MANAGEMENT
+    /* error handling */
+}
+
+/* sending the frame */
+kiss_err = kiss_send_frame(&my_kiss);
+if(kiss_err != 0)
+{
+    /* error handling */
+}
+```
+
+## 5. Receiving Data (Receive & Decode)
+
+When you are waiting for something to arrive you can use the **kiss_receive_frame** function. It reads
+the bytes via the callback, assembles the frame and make it ready for decoding.
+
+```C
+/* receiving buffer */
+uint8_t rx_buffer[KISS_BUFFER_SIZE];
+/* length of data received */
+size_t rx_len = 0;          
+/* header of the frame received */
+uint8_t rx_header;
+
+
+/* try to receive with a maximum attempts */
+kiss_err = kiss_receive_frame(&my_kiss, 1);
+
+if(kiss_err == 0)
+{
+    /* packet have been received */
+
+    /* decoding the message */
+    kiss_err = kiss_decode(&my_kiss, rx_buffer, KISS_BUFFER_SIZE, &rx_len, &rx_header);
+
+    if(kiss_err != 0)
+    {
+        /* error handling */
+    }
+    else
+    {
+        /* message has been received */
+        /* printing data just to show what has been received */
+        printf("Header:\t%02X\n", rx_header);
+        printf("Bytes received\n");
+        for(size_t i = 0; i < rx_len; i++)
+            printf("%02X ", rx_buffer[i]);
+        printf("\n---------\n");
+    }
+
+}
+else if(kiss_err == KISS_ERR_NO_DATA_RECEIVED)
+{
+    /* no data received */
+}
+else
+{
+    /* handling any other error */
 }
 ```
