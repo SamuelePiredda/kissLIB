@@ -1,5 +1,6 @@
 # kissLIB
-small and portable KISS library for C that can be used for embedded.
+small and portable KISS library written in C that can be used in any computer or embedded system. 
+It is a small and easy protocol which allows you to communicate with other devices using any physical layer.
 
 
 
