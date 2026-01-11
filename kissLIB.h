@@ -14,23 +14,8 @@ extern "C" {
 
 
 /*
-    typedef union
-    {
-        uint8_t raw;
-        struct 
-        {
-            uint8_t command : 4;
-            uint8_t port : 4;
-        } parts;
-        
-    } kiss_header;
-    
-    kiss_header hd;
-
-    hd.parts.command = 4;
-    hd.parts.port = 5;
+* This lib is the most generic possible but it tries to reduce the RAM usage for Arduino.
 */
-
 
 /* some generic unions for useful data */
 typedef union 
@@ -101,6 +86,11 @@ typedef union
 #define KISS_ERR_DATA_NOT_ENCODED 5
 #define KISS_ERR_CRC32_MISMATCH 6
 #define KISS_ERR_CALLBACK_MISSING 7
+#define KISS_ERR_HEADER_ESCAPE 8
+#define KISS_ERR_STATUS 9
+#define KISS_ERR_PADDING_OVERFLOW 10
+
+#define KISS_OK 0   
 
 /**
  * KISS frame direction indicators
@@ -144,6 +134,14 @@ typedef union
 
 
 
+
+
+#define KISS_MAX_PADDING 32
+
+
+
+
+
 typedef struct kiss_instance_t kiss_instance_t;
 
 
@@ -159,7 +157,7 @@ typedef struct kiss_instance_t kiss_instance_t;
  *  - 0 if everything went good
  *  - Any other number for error
  */
-typedef int (*kiss_write_fn)(kiss_instance_t *kiss, uint8_t *data, size_t length);
+typedef int (*kiss_write_fn)(kiss_instance_t *kiss, const uint8_t *data, size_t length);
 
 /** Transport callback: read `length` bytes into `data` from transport.
  *
@@ -222,6 +220,7 @@ struct kiss_instance_t {
  * Compute the CRC32 checksum for the given data.
  *
  * Parameters:
+ *  - kiss: kiss instance
  *  - data: pointer to input data
  *  - len: length of input data in bytes
  *
@@ -229,6 +228,23 @@ struct kiss_instance_t {
  *  - CRC32 checksum
  */
 uint32_t kiss_crc32(kiss_instance_t *kiss, const uint8_t *data, size_t len);
+
+
+
+/* kiss_crc_32_push
+* -----------------
+* Compute CRC32 from a previous crc32 computed, it will returned the crc32 without final XOR
+* so you must compute the XOR in the return.
+* Parameters:
+* - kiss: kiss instance
+* - prev_crc: previously calculated CRC32 (no final XOR)
+* - data: more data to compute CRC32
+* - len: length of the data
+* Returns:
+* - returns the CRC32 calculated
+*/
+uint32_t kiss_crc32_push(kiss_instance_t *kiss, uint32_t prev_crc, const uint8_t *data, size_t len);
+
 
 /**
  * kiss_verify_crc32
