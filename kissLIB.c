@@ -523,7 +523,7 @@ int kiss_send_frame(kiss_instance_t *kiss)
             uint8_t chunk[32];
             for(int i = 0; i < 32; i++)
                 chunk[(int)i] = pgm_read_byte(&kiss_padding_block[i]);
-            err = kiss->write(kiss, chunk, kiss->padding)
+            err = kiss->write(kiss, chunk, kiss->padding);
         #else
             err = kiss->write(kiss, kiss_padding_block, kiss->padding);
         #endif
