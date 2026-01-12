@@ -149,12 +149,14 @@ typedef struct kiss_instance_t kiss_instance_t;
 /** Transport callback: write a single byte to the physical transport.
  *
  * Implementations should block or buffer as appropriate for the platform.
+ * ----------
  * Parameters:
  *  - kiss: kiss instance, inside the instnace there is the context variable for using specific physical layers
  *  - data: payload data array to be written
  *  - length: payload data array length to be written
+ * ----------
  * Returns:
- *  - 0 if everything went good
+ *  - KISS_OK(0) if everything went good
  *  - Any other number for error
  */
 typedef int (*kiss_write_fn)(kiss_instance_t *kiss, const uint8_t *data, size_t length);
@@ -163,13 +165,15 @@ typedef int (*kiss_write_fn)(kiss_instance_t *kiss, const uint8_t *data, size_t 
  *
  * The library calls this with small lengths (typically 1). Implementations
  * should attempt to return exactly `length` bytes (may block).
+ * ----------
  * Parameters:
  *  - kiss: kiss instance, inside the instance there is the context variable for using specific physical layers
  *  - buffer: buffer array where the data arrived is written
  *  - dataLen: maximum data length of the buffer array
  *  - read: real number of bytes read in the buffer
+ * ----------
  * Returns:
- *  - 0 if everything went good
+ *  - KISS_OK(0) if everything went good
  *  - Any other number for error
  */
 typedef int (*kiss_read_fn)(kiss_instance_t *kiss, uint8_t *buffer, size_t dataLen, size_t *read);

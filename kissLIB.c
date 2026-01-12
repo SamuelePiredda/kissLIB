@@ -21,9 +21,7 @@
 #include <avr/pgmspace.h>
 
 
-
-
-/* PADDING MEMORY CHUNK WITH MAXIMUM LENGTH */
+/* maximum padding block that the device can send before the frame */
 static const uint8_t kiss_padding_block[KISS_MAX_PADDING] PROGMEM = {
     0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0,
     0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0,
@@ -520,8 +518,8 @@ int kiss_send_frame(kiss_instance_t *kiss)
     {
         /* adding arduino block for extra memory reduction */
         #ifdef ARDUINO
-            uint8_t chunk[32];
-            for(int i = 0; i < 32; i++)
+            uint8_t chunk[KISS_MAX_PADDING];
+            for(int i = 0; i < kiss->padding; i++)
                 chunk[(int)i] = pgm_read_byte(&kiss_padding_block[i]);
             err = kiss->write(kiss, chunk, kiss->padding);
         #else
@@ -571,12 +569,14 @@ int kiss_send_frame(kiss_instance_t *kiss)
  */
 int kiss_encode_and_send(kiss_instance_t *kiss, uint8_t *data, size_t length, uint8_t header)
 {
+    /* error container */
     int err = KISS_OK;
+    /* encoding the data */
     err = kiss_encode(kiss, data, length, header);
+    /* check if the encoding went ok */
     if(err != KISS_OK)
-    {
         return err;
-    }
+    /* sending the frame immediatly */
     return kiss_send_frame(kiss);
 }
 
@@ -601,6 +601,7 @@ int kiss_encode_and_send(kiss_instance_t *kiss, uint8_t *data, size_t length, ui
  */
 int kiss_receive_frame(kiss_instance_t *kiss, uint32_t maxAttempts)
 {
+    /* check if parameters are ok */
     if(kiss == NULL)
         return KISS_ERR_INVALID_PARAMS;
 
@@ -713,13 +714,32 @@ int kiss_receive_frame(kiss_instance_t *kiss, uint32_t maxAttempts)
  */
 int kiss_receive_and_decode(kiss_instance_t *kiss, uint8_t *output, size_t output_max_size, size_t *output_length, uint32_t maxAttempts, uint8_t *header)
 {
-    int err = KISS_OK;
-    err = kiss_receive_frame(kiss, maxAttempts);
-    if(err != KISS_OK)
-    {
-        return err;
-    }       
+    /* check if kiss is null*/
+    if(kiss == NULL)
+        return KISS_ERR_INVALID_PARAMS;
+    /* buffer size cannot be zero */
+    if(kiss->buffer_size == 0)
+        return KISS_ERR_INVALID_PARAMS;
+    /* check if output data pointer is null */
+    if(output == NULL)
+        return KISS_ERR_INVALID_PARAMS;
+    /* check if the ouput length pointer is null */
+    if(output_length == NULL)
+        return KISS_ERR_INVALID_PARAMS;
+    /* check if the maximum attempts are ok */
+    if(maxAttempts < 1)
+        return KISS_ERR_INVALID_PARAMS;
     
+    // -----------------------
+
+    /* error container */
+    int err = KISS_OK;
+    /* try to receive a frame */
+    err = kiss_receive_frame(kiss, maxAttempts);
+    /* check if the frame has been received */
+    if(err != KISS_OK)
+        return err;
+    /* decode the frame and return the output status */
     return kiss_decode(kiss, output, output_max_size, output_length, header);
 }
 
@@ -896,20 +916,35 @@ int kiss_send_ping(kiss_instance_t *kiss)
 */
 int kiss_send_param(kiss_instance_t *kiss, uint16_t ID, uint8_t *param, size_t len, uint8_t header)
 {
-    if(kiss == NULL || param == NULL) return KISS_ERR_INVALID_PARAMS;
-    if(kiss->buffer_size < 5 + len) return KISS_ERR_BUFFER_OVERFLOW;
-    int err = 0;
+    /* check if kiss instance is null or parameter pointer is null */
+    if(kiss == NULL || param == NULL) 
+        return KISS_ERR_INVALID_PARAMS;
+    /* check if buffer size is large enough */
+    if(kiss->buffer_size < 5 + len) 
+        return KISS_ERR_BUFFER_OVERFLOW;
+
+    /* error container */
+    int err = KISS_OK;
     
+    /* ID of the parameter to send as byte array */
     uint8_t id_[2] = {(uint8_t) ID, (uint8_t)(ID >> 8)};
     
+    /* encode the parameter ID */
     err = kiss_encode(kiss, id_, 2, header);
-    if(err != 0) return err;
+    /* check for errors */
+    if(err != 0) 
+        return err;
     
+    /* push encode the parameter */
     err = kiss_push_encode(kiss, param, len);
-    if(err != 0) return err;
+    /* check for errors */
+    if(err != 0) 
+        return err;
 
+    /* status is transmitting */
     kiss->Status = KISS_STATUS_TRANSMITTING;
 
+    /* send the frame and return the result */
     return kiss_send_frame(kiss);
 }
 
@@ -944,8 +979,18 @@ int kiss_send_param_crc32(kiss_instance_t *kiss, uint16_t ID, uint8_t *param, si
     uint8_t id_[2] = {(uint8_t) ID, (uint8_t)(ID >> 8)}; 
     
     uint32_t CRC;
-    CRC = kiss_crc32_push(kiss, 0, id_, 2);
+
+    CRC = kiss_crc32(kiss, id_, 2);
+    if(kiss->Status = KISS_STATUS_ERROR_STATE)
+    {
+        return KISS_ERR_STATUS;
+    }
+    
     CRC = ~kiss_crc32_push(kiss, CRC, param, len);
+    if(kiss->Status = KISS_STATUS_ERROR_STATE)
+    {
+        return KISS_ERR_STATUS;
+    }
 
     /* encoding the ID */
     err = kiss_encode(kiss, id_, 2, header);
@@ -995,6 +1040,14 @@ int kiss_send_param_crc32(kiss_instance_t *kiss, uint16_t ID, uint8_t *param, si
 /* defines the CRC32 for arduino */
 uint32_t kiss_crc32(kiss_instance_t *kiss, const uint8_t *data, size_t len)
 {
+    if(kiss == NULL)
+        return 0;
+
+    if(data == NULL)
+    {
+        kiss->Status = KISS_STATUS_ERROR_STATE;
+        return 0;
+    }
     uint32_t crc = 0xFFFFFFFF;
     for (size_t i = 0; i < len; i++) 
     {
@@ -1011,6 +1064,15 @@ uint32_t kiss_crc32(kiss_instance_t *kiss, const uint8_t *data, size_t len)
 */
 uint32_t kiss_crc32_push(kiss_instance_t *kiss, uint32_t prev_crc, const uint8_t *data, size_t len)
 {
+    if(kiss == NULL)
+        return 0;
+
+    if(data == NULL)
+    {
+        kiss->Status = KISS_STATUS_ERROR_STATE;
+        return 0;
+    }
+    
     uint32_t crc;
 
     if(prev_crc == 0)
@@ -1029,9 +1091,28 @@ uint32_t kiss_crc32_push(kiss_instance_t *kiss, uint32_t prev_crc, const uint8_t
 
 #else
 
-/* CRC32 function not for ARDUINO */
+/* kiss_crc32
+* --------------------------
+* this function create the CRC32 from a data block in "data" with length "len" 
+* ---------------
+* Parameters:
+* - data: data block 
+* - len: length of the data block
+* ---------------
+* Returns: 
+* - the CRC calculated
+*/
 uint32_t kiss_crc32(kiss_instance_t *kiss, const uint8_t *data, size_t len)
 {
+    if(kiss == NULL)
+        return 0;
+
+    if(data == NULL)
+    {
+        kiss->Status = KISS_STATUS_ERROR_STATE;
+        return 0;
+    }
+
     uint32_t crc = 0xFFFFFFFF;
     for (size_t i = 0; i < len; i++) 
     {
@@ -1042,12 +1123,30 @@ uint32_t kiss_crc32(kiss_instance_t *kiss, const uint8_t *data, size_t len)
     return ~crc;
 }
 
-/*
-* you calculated the CRC32 for a first block of data
-* now you want to add another block of data with the new CRC32 which takes into account the previous one
+/* kiss_crc32_push
+* --------------------------
+* this function create the CRC32 from a data block in "data" with length "len" and a previously CRC32 already calculated in kiss_crc32.,
+* you can also use this function for the first CRC calculation but the "prev_crc" should be 0.
+* ---------------
+* Parameters:
+* - prev_crc: previously calculated CRC32
+* - data: new data block 
+* - len: new length of the data block
+* ---------------
+* Returns: 
+* - the CRC calculated taking into account prev_crc
 */
 uint32_t kiss_crc32_push(kiss_instance_t *kiss, uint32_t prev_crc, const uint8_t *data, size_t len)
 {
+    if(kiss == NULL)
+        return 0;
+
+    if(data == NULL)
+    {
+        kiss->Status = KISS_STATUS_ERROR_STATE;
+        return 0;
+    }   
+
     uint32_t crc;
 
     if(prev_crc == 0)
@@ -1116,8 +1215,14 @@ int kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *data, size_t length, uint8
     if (err != KISS_OK) 
         return err;
 
+    kiss->Status = KISS_STATUS_NOTHING;
+
     // calculate CRC32 on ORIGINAL data before any KISS encoding
     uint32_t crc = kiss_crc32(kiss, data, length);
+    if(kiss->Status == KISS_STATUS_ERROR_STATE)
+    {
+        return KISS_ERR_STATUS;
+    }
 
     /* create 4 bytes from the CRC32 */
     uint8_t crc_b[4];
@@ -1170,13 +1275,19 @@ int kiss_decode_crc32(kiss_instance_t *kiss, uint8_t *output, size_t max_out_siz
     if(kiss->index < 4)
         return KISS_ERR_INVALID_FRAME;
 
-    // 1. Decode the KISS frame into the output buffer
+
+    kiss->Status = KISS_STATUS_NOTHING;
+
+    // Decode the KISS frame into the output buffer
     // Note: ensure your base kiss_decode also respects max_out_size
     int err = kiss_decode(kiss, output, max_out_size, output_length, header);
     if (err != KISS_OK) 
+    {
+        kiss->Status = KISS_STATUS_ERROR_STATE;
         return err;
-
-    // 2. Safety check: the decoded data must fit in max_out_size 
+    }
+    
+    // Safety check: the decoded data must fit in max_out_size 
     // (Already partially checked by kiss_decode, but we verify again for CRC)
     if (*output_length > max_out_size)
     {
@@ -1184,21 +1295,21 @@ int kiss_decode_crc32(kiss_instance_t *kiss, uint8_t *output, size_t max_out_siz
         return KISS_ERR_BUFFER_OVERFLOW;
     }
 
-    // 3. A valid CRC32 frame must contain at least 4 bytes for the checksum
+    // A valid CRC32 frame must contain at least 4 bytes for the checksum
     if (*output_length < 4)
     {
         kiss->Status = KISS_STATUS_RECEIVED_ERROR;
         return KISS_ERR_INVALID_FRAME;
     }
 
-    // 4. Extract the received CRC (the last 4 bytes of the decoded payload)
+    // Extract the received CRC (the last 4 bytes of the decoded payload)
     size_t payload_len = *output_length - 4;
     uint32_t received_crc = (uint32_t)output[payload_len] |
                             ((uint32_t)output[payload_len + 1] << 8) |
                             ((uint32_t)output[payload_len + 2] << 16) |
                             ((uint32_t)output[payload_len + 3] << 24);
     *output_length = payload_len;
-    // 5. Verify the calculated CRC of the payload against the received one
+    // Verify the calculated CRC of the payload against the received one
     if (kiss_verify_crc32(kiss, output, payload_len, received_crc) != KISS_OK)
     {        
         kiss->Status = KISS_STATUS_RECEIVED_ERROR;
