@@ -54,7 +54,7 @@ If you plan to transmit packets that are X long, you have to create a buffer whi
 If you want to send data, use the encode function to encode the data previous to sending
 ```C
 int kiss_encode(kiss_instance_t *kiss, uint8_t *data, 
-                size_t length, const uint8_t header);
+                size_t length, uint8_t header);
 ```
 
 If you want to add more data after you have used the kiss_encode function use this function here:
