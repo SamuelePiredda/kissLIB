@@ -6,8 +6,9 @@ It is a small and easy protocol which allows you to communicate with other devic
 
 These are the two callback functions that the user must implement for writing and receiving, for whataver physical layer (I2C, UART etc..)
 ``` C
-typedef int (*kiss_write_fn)(kiss_instance_t *kiss, const uint8_t *data, size_t length);
-typedef int (*kiss_read_fn)(kiss_instance_t *kiss, uint8_t *buffer, size_t dataLen, size_t *read);
+typedef int (*kiss_write_fn)(kiss_instance_t *const kiss, const uint8_t *const data, size_t length);
+typedef int (*kiss_read_fn)(kiss_instance_t *const kiss, uint8_t *const buffer, 
+                            size_t dataLen, size_t *const read);
 ```
 Inside the kiss_instance_t structure you will find the pointer to the physical layer handler so that you can use whatever interface to read from and write to.
 
@@ -39,9 +40,9 @@ kiss_instance_t kiss_i;
 
 Then call the initialization function with all the necessary parameters
 ```C
-int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, uint16_t buffer_size, 
+int kiss_init(kiss_instance_t *const kiss, uint8_t *const buffer, uint16_t buffer_size, 
                 uint8_t TXdelay, uint32_t BaudRate, kiss_write_fn write, 
-                kiss_read_fn read, void *context, uint8_t padding);
+                kiss_read_fn read, void *const context, uint8_t padding);
 ```
 Each kiss_instance_t use one buffer for input/output. This buffer allocation is done by the user which can select the right amount of bytes to allocate to it. You can use static allocation or dynamic allocation.
 ```C
@@ -53,68 +54,68 @@ If you plan to transmit packets that are X long, you have to create a buffer whi
 
 If you want to send data, use the encode function to encode the data previous to sending
 ```C
-int kiss_encode(kiss_instance_t *kiss, uint8_t *data, 
+int kiss_encode(kiss_instance_t *const kiss, uint8_t *const data, 
                 size_t length, uint8_t header);
 ```
 
 If you want to add more data after you have used the kiss_encode function use this function here:
 ```C
-int kiss_push_encode(kiss_instance_t *kiss, uint8_t *data, size_t length);
+int kiss_push_encode(kiss_instance_t *const kiss, uint8_t *const data, size_t length);
 ```
 
 After you have received a frame use this function to decode the data 
 ```C
-int kiss_decode(kiss_instance_t *kiss, uint8_t *output, size_t output_max_size, 
-                size_t *output_length, uint8_t *header);
+int kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t output_max_size, 
+                size_t *const output_length, uint8_t *const header);
 
 ```
 
 After the data that you want to send has been encoded use this function to send it
 ```C
-int kiss_send_frame(kiss_instance_t *kiss);
+int kiss_send_frame(kiss_instance_t *const kiss);
 ```
 
 Use this function to wait for a kiss frame arriving
 ```C
-int kiss_receive_frame(kiss_instance_t *kiss, uint32_t maxAttempts);
+int kiss_receive_frame(kiss_instance_t *const kiss, uint32_t maxAttempts);
 ```
 
 
 These are quick functions for transmitting quick command frames
 ```C
-int kiss_set_TXdelay(kiss_instance_t *kiss, uint8_t tx_delay);
-int kiss_set_speed(kiss_instance_t *kiss, uint32_t BaudRate);
-int kiss_send_ack(kiss_instance_t *kiss);
-int kiss_send_nack(kiss_instance_t *kiss);
-int kiss_send_ping(kiss_instance_t *kiss);
-int kiss_send_param(kiss_instance_t *kiss, uint16_t ID, 
-                    uint8_t *param, size_t len, uint8_t header);
+int kiss_set_TXdelay(kiss_instance_t *const kiss, uint8_t tx_delay);
+int kiss_set_speed(kiss_instance_t *const kiss, uint32_t BaudRate);
+int kiss_send_ack(kiss_instance_t *const kiss);
+int kiss_send_nack(kiss_instance_t *const kiss);
+int kiss_send_ping(kiss_instance_t *const kiss);
+int kiss_send_param(kiss_instance_t *const kiss, uint16_t ID, 
+                    uint8_t *const param, size_t len, uint8_t header);
 ```
 
 To quickly encode and send or receive and decode use the following functions
 ```C
-int kiss_encode_and_send(kiss_instance_t *kiss, uint8_t *data, 
+int kiss_encode_and_send(kiss_instance_t *const kiss, uint8_t *const data, 
                         size_t length, uint8_t header);
-int kiss_receive_and_decode(kiss_instance_t *kiss, uint8_t *output, size_t output_max_size,
-                        size_t *output_length, uint32_t maxAttempts, uint8_t *header);
+int kiss_receive_and_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t output_max_size,
+                        size_t *const output_length, uint32_t maxAttempts, uint8_t *const header);
 ```
 
 The following functions encode and decode the data with four more bytes for CRC32 at the end of the frame.
 ```C
-int kiss_decode_crc32(kiss_instance_t *kiss, uint8_t *output, 
-                    size_t *output_length, uint8_t *header);
-int kiss_encode_crc32(kiss_instance_t *kiss, uint8_t *data,
+int kiss_decode_crc32(kiss_instance_t *const kiss, uint8_t *const output, 
+                    size_t *const output_length, uint8_t *const header);
+int kiss_encode_crc32(kiss_instance_t *const kiss, uint8_t *const data,
                     size_t length, const uint8_t header);
-int kiss_encode_send_crc32(kiss_instance_t *kiss, uint8_t *data, 
+int kiss_encode_send_crc32(kiss_instance_t *const kiss, uint8_t *const data, 
                     size_t length, uint8_t header)
-int kiss_send_param_crc32(kiss_instance_t *kiss, uint16_t ID, uint8_t *param, 
+int kiss_send_param_crc32(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const param, 
                     size_t len, uint8_t header);
 ```
 
 
 Add the **KISS_DEBUG** directive to have access to the function which prints out the instance for debug
  ```C
-void kiss_debug(kiss_instance_t *kiss)
+void kiss_debug(kiss_instance_t *const kiss)
 ```
 
 
@@ -135,7 +136,7 @@ First, tell the library how to send and read bytes from your hardware (e.g. UART
 ```C
 // Write callback example (TX)
 // sends 'length' bytes from 'data' to the hardware
-int write_callback(kiss_instance_t *kiss, uint8_t *data, size_t length)
+int write_callback(kiss_instance_t *const kiss, uint8_t *const data, size_t length)
 {
     /* All code for sending bytes
     * if you need specific object you can call kiss->context pointer object
@@ -147,7 +148,7 @@ int write_callback(kiss_instance_t *kiss, uint8_t *data, size_t length)
 // Read callback example (RX)
 // Reads up to 'dataLen' bytes and stores them in 'buffer'
 // updates 'readBytes' with the actual number of bytes read.
-int read_callback(kiss_instance_t *kiss, uint8_t *buffer, size_t dataLen, size_t *readBytes)
+int read_callback(kiss_instance_t *const kiss, uint8_t *const buffer, size_t dataLen, size_t *const readBytes)
 {
     /* 
     * All code for receiving bytes
