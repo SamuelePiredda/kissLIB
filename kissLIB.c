@@ -151,7 +151,7 @@ static const uint32_t kiss_CRC32_Table[256] = {
  */
 int kiss_init(kiss_instance_t *const kiss, uint8_t *const buffer, size_t buffer_size, uint8_t tx_delay, kiss_write_fn write, kiss_read_fn read, void *const context, uint8_t padding)
 {
-    if (kiss == NULL || buffer_size == 0 || buffer == NULL)
+    if (NULL == kiss || 0 == buffer_size || NULL == buffer)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
@@ -203,11 +203,11 @@ int kiss_init(kiss_instance_t *const kiss, uint8_t *const buffer, size_t buffer_
 int kiss_encode(kiss_instance_t *const kiss, uint8_t *const data, size_t length, uint8_t header)
 {
     /* check for parameters error or size of the buffer too small for the payload */
-    if(kiss == NULL)
+    if(NULL == kiss)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
-    if(kiss->buffer == NULL)
+    if(NULL == kiss->buffer)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
@@ -220,12 +220,12 @@ int kiss_encode(kiss_instance_t *const kiss, uint8_t *const data, size_t length,
     kiss->index = 0;
     kiss->buffer[kiss->index++] = KISS_FEND;
     
-    if(header == KISS_FESC)
+    if(KISS_FESC == header)
     {
         kiss->buffer[kiss->index++] = KISS_FESC;
         kiss->buffer[kiss->index++] = KISS_TFESC;
     }
-    else if(header == KISS_FEND)
+    else if(KISS_FEND == header)
     {
         kiss->buffer[kiss->index++] = KISS_FESC;
         kiss->buffer[kiss->index++] = KISS_TFEND;
@@ -240,7 +240,7 @@ int kiss_encode(kiss_instance_t *const kiss, uint8_t *const data, size_t length,
     {
         uint8_t b = data[i];
         /* if it is a special character */
-        if (b == KISS_FEND)
+        if (KISS_FEND == b)
         {
             /* constantly check if there is enough space in the kiss buffer */
             if(kiss->index + 2 > kiss->buffer_size)
@@ -252,7 +252,7 @@ int kiss_encode(kiss_instance_t *const kiss, uint8_t *const data, size_t length,
             kiss->buffer[kiss->index++] = KISS_FESC;
             kiss->buffer[kiss->index++] = KISS_TFEND;
         }
-        else if (b == KISS_FESC)
+        else if (KISS_FESC == b)
         {
             /* check if there is enough space in the kiss buffer */
             if(kiss->index + 2 > kiss->buffer_size)
@@ -313,11 +313,11 @@ int kiss_encode(kiss_instance_t *const kiss, uint8_t *const data, size_t length,
 int kiss_push_encode(kiss_instance_t *const kiss, uint8_t *const data, size_t length)
 {
     /* control that parameters are good */
-    if(kiss == NULL || data == NULL || length == 0) 
+    if(NULL == kiss || NULL == data || 0 == length) 
     {
         return KISS_ERR_INVALID_PARAMS;
     }
-    if(kiss->Status == KISS_STATUS_ERROR_STATE)
+    if(KISS_STATUS_ERROR_STATE == kiss->Status)
     {
         return KISS_ERR_STATUS;
     }
@@ -325,13 +325,13 @@ int kiss_push_encode(kiss_instance_t *const kiss, uint8_t *const data, size_t le
     {
         return KISS_ERR_INVALID_PARAMS;
     }
-    if(kiss->index == 0)
+    if(0 == kiss->index)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
 
 
-    if(kiss->buffer[kiss->index-1] == KISS_FEND)
+    if(KISS_FEND == kiss->buffer[kiss->index-1])
     {
         kiss->index--;
     }
@@ -345,7 +345,7 @@ int kiss_push_encode(kiss_instance_t *const kiss, uint8_t *const data, size_t le
     for(size_t i = 0; i < length; i++)
     {
         /* if it is a fend special character */
-        if(data[i] == KISS_FEND)
+        if(KISS_FEND == data[i])
         {
             if(kiss->index + 2 > kiss->buffer_size)
             {
@@ -356,7 +356,7 @@ int kiss_push_encode(kiss_instance_t *const kiss, uint8_t *const data, size_t le
             kiss->buffer[kiss->index++] = KISS_TFEND;
         }
         /* if it is a fesc special character */
-        else if(data[i] == KISS_FESC)
+        else if(KISS_FESC == data[i])
         {
             if(kiss->index + 2 > kiss->buffer_size)
             {
@@ -413,7 +413,7 @@ int kiss_push_encode(kiss_instance_t *const kiss, uint8_t *const data, size_t le
 int kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t output_max_size, size_t *const output_length, uint8_t *const header)
 {
     /* check basic parameters */
-    if (!kiss || !output || !output_length)
+    if (NULL == kiss || NULL == output || NULL == output_length)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
@@ -429,7 +429,7 @@ int kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t outpu
     const uint8_t *dst_end = output + output_max_size;
 
     /* fast skip for padding */
-    while (src < src_end && *src == KISS_FEND)
+    while (src < src_end && KISS_FEND == *src)
     {
         src++;
     }
@@ -446,7 +446,7 @@ int kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t outpu
     uint8_t val = *src++;
 
     /* header escape management */
-    if (val == KISS_FESC) 
+    if (KISS_FESC == val) 
     {
         if (src >= src_end) 
         {
@@ -454,11 +454,11 @@ int kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t outpu
             return KISS_ERR_INVALID_FRAME;
         }
         val = *src++;
-        if (val == KISS_TFEND) 
+        if (KISS_TFEND == val) 
         {
             val = KISS_FEND;
         }
-        else if (val == KISS_TFESC)
+        else if (KISS_TFESC == val)
         {
             val = KISS_FESC;
         } 
@@ -471,7 +471,7 @@ int kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t outpu
     }
 
     /* if we find another FEND it means there is no payload, it is ok */
-    else if (val == KISS_FEND)
+    else if (KISS_FEND == val)
     {
          *output_length = 0;
          return KISS_OK; 
@@ -489,14 +489,14 @@ int kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t outpu
         uint8_t byte = *src++;
 
         /* final FEND */
-        if (byte == KISS_FEND) 
+        if (KISS_FEND == byte) 
         {
             /* exiting from loop */
             break; 
         }
 
         /* escape frequency found */
-        if (byte == KISS_FESC) 
+        if (KISS_FESC == byte) 
         {
             if (src >= src_end) 
             {
@@ -508,11 +508,11 @@ int kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t outpu
             /* read the next byte */
             byte = *src++;
 
-            if (byte == KISS_TFEND)
+            if (KISS_TFEND == byte)
             {
                 byte = KISS_FEND;
             }
-            else if (byte == KISS_TFESC) 
+            else if (KISS_TFESC == byte) 
             {
                 byte = KISS_FESC;
             }
@@ -559,12 +559,12 @@ int kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t outpu
 int kiss_send_frame(kiss_instance_t *const kiss)
 {
     /* param check */
-    if (kiss == NULL) 
+    if (NULL == kiss) 
     {
         return KISS_ERR_INVALID_PARAMS;
     }
     /* check if the write callback function exists */
-    if(kiss->write == NULL)
+    if(NULL == kiss->write)
     {
         return KISS_ERR_CALLBACK_MISSING;
     }
@@ -607,7 +607,7 @@ int kiss_send_frame(kiss_instance_t *const kiss)
     /* write the frame */
     err = kiss->write(kiss, kiss->buffer, kiss->index);
     /* if no error */
-    if(err == KISS_OK)
+    if(KISS_OK == err)
     {
         kiss->Status = KISS_STATUS_TRANSMITTED;
         return KISS_OK;
@@ -675,19 +675,19 @@ int kiss_encode_and_send(kiss_instance_t *const kiss, uint8_t *const data, size_
 int kiss_receive_frame(kiss_instance_t *const kiss, uint32_t maxAttempts)
 {
     /* check if parameters are ok */
-    if(kiss == NULL)
+    if(NULL == kiss)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
 
     /* the reading callback function must exist */
-    if(kiss->read == NULL)
+    if(NULL == kiss->read)
     {
         return KISS_ERR_CALLBACK_MISSING;
     }
 
     // Validate inputs
-    if (kiss->buffer == NULL || maxAttempts == 0)
+    if (NULL == kiss->buffer || 0 == maxAttempts)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
@@ -726,7 +726,7 @@ int kiss_receive_frame(kiss_instance_t *const kiss, uint32_t maxAttempts)
             if (!frame_started)
             {
                 /* starting frame? */
-                if (kiss->buffer[i] == KISS_FEND)
+                if (KISS_FEND == kiss->buffer[i])
                 {
                     /* frame is started we copy at the start of the buffer, remember that
                     * in this case i >= new_index ALWAYS */
@@ -737,7 +737,7 @@ int kiss_receive_frame(kiss_instance_t *const kiss, uint32_t maxAttempts)
             else
             {
                 /* if there are more C0 after the first one we just pass them since they are there for sync or padding */
-                if(i > 0 && kiss->buffer[i] == KISS_FEND && new_index <= 1)
+                if(i > 0 && KISS_FEND == kiss->buffer[i] && new_index <= 1)
                 {
                     /* do nothing, continue the cycle and ignore the C0 padding */
                 }
@@ -747,7 +747,7 @@ int kiss_receive_frame(kiss_instance_t *const kiss, uint32_t maxAttempts)
                     kiss->buffer[new_index++] = kiss->buffer[i];
                 
                     /* if we are here the frame is already started and we are searching for the ending byte */
-                    if (kiss->buffer[i] == KISS_FEND)
+                    if (KISS_FEND == kiss->buffer[i])
                     {
                         /* we have the ending byte so we set the received status */
                         kiss->Status = KISS_STATUS_RECEIVED;
@@ -798,27 +798,27 @@ int kiss_receive_frame(kiss_instance_t *const kiss, uint32_t maxAttempts)
 int kiss_receive_and_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t output_max_size, size_t *const output_length, uint32_t maxAttempts, uint8_t *const header)
 {
     /* check if kiss is null*/
-    if(kiss == NULL)
+    if(NULL == kiss)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
     /* buffer size cannot be zero */
-    if(kiss->buffer_size == 0)
+    if(0 == kiss->buffer_size)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
     /* check if output data pointer is null */
-    if(output == NULL)
+    if(NULL == output)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
     /* check if the ouput length pointer is null */
-    if(output_length == NULL)
+    if(NULL == output_length)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
     /* check if the maximum attempts are ok */
-    if(maxAttempts == 0)
+    if(0 == maxAttempts)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
@@ -861,11 +861,11 @@ int kiss_receive_and_decode(kiss_instance_t *const kiss, uint8_t *const output, 
  */
 int kiss_set_TXdelay(kiss_instance_t *const kiss, uint8_t tx_delay)
 {
-    if (kiss == NULL || tx_delay == 0)
+    if (NULL == kiss || 0 == tx_delay)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
-    if(kiss->buffer == NULL)
+    if(NULL == kiss->buffer)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
@@ -899,11 +899,11 @@ int kiss_set_TXdelay(kiss_instance_t *const kiss, uint8_t tx_delay)
  */
 int kiss_set_speed(kiss_instance_t *const kiss, uint32_t BaudRate)
 {
-    if (kiss == NULL || BaudRate == 0)
+    if (NULL == kiss || 0 == BaudRate)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
-    if(kiss->buffer == NULL)
+    if(NULL == kiss->buffer)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
@@ -938,11 +938,11 @@ int kiss_set_speed(kiss_instance_t *const kiss, uint32_t BaudRate)
  */
 int kiss_send_ack(kiss_instance_t *const kiss)
 {
-    if (kiss == NULL)
+    if (NULL == kiss)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
-    if(kiss->buffer == NULL)
+    if(NULL == kiss->buffer)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
@@ -970,11 +970,11 @@ int kiss_send_ack(kiss_instance_t *const kiss)
  */
 int kiss_send_nack(kiss_instance_t *const kiss)
 {
-    if(kiss == NULL)
+    if(NULL == kiss)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
-    if(kiss->buffer == NULL)
+    if(NULL == kiss->buffer)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
@@ -1002,11 +1002,11 @@ int kiss_send_nack(kiss_instance_t *const kiss)
  */
 int kiss_send_ping(kiss_instance_t *const kiss)
 {
-    if(kiss == NULL)
+    if(NULL == kiss)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
-    if(kiss->buffer == NULL)
+    if(NULL == kiss->buffer)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
@@ -1042,7 +1042,7 @@ int kiss_send_ping(kiss_instance_t *const kiss)
 int kiss_send_param(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const param, size_t len, uint8_t header)
 {
     /* check if kiss instance is null or parameter pointer is null */
-    if(kiss == NULL || param == NULL) 
+    if(NULL == kiss || NULL == param) 
     {
         return KISS_ERR_INVALID_PARAMS;
     }
@@ -1061,7 +1061,7 @@ int kiss_send_param(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const par
     /* encode the parameter ID */
     err = kiss_encode(kiss, id_, 2, header);
     /* check for errors */
-    if(err != 0) 
+    if(err != KISS_OK) 
     {
         return err;
     }
@@ -1069,7 +1069,7 @@ int kiss_send_param(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const par
     /* push encode the parameter */
     err = kiss_push_encode(kiss, param, len);
     /* check for errors */
-    if(err != 0) 
+    if(err != KISS_OK) 
     {
         return err;
     }
@@ -1101,11 +1101,11 @@ int kiss_send_param(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const par
 int kiss_send_param_crc32(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const param, size_t len, uint8_t header)
 {
     /* check basic errors */
-    if(kiss == NULL || param == NULL) 
+    if(NULL == kiss || NULL == param) 
     {
         return KISS_ERR_INVALID_PARAMS;
     }
-    if(kiss->buffer == NULL)
+    if(NULL == kiss->buffer)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
@@ -1186,12 +1186,12 @@ int kiss_send_param_crc32(kiss_instance_t *const kiss, uint16_t ID, uint8_t *con
 /* defines the CRC32 for arduino */
 uint32_t kiss_crc32(kiss_instance_t *const kiss, const uint8_t *data, size_t len)
 {
-    if(kiss == NULL)
+    if(NULL == kiss)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
 
-    if(data == NULL)
+    if(NULL == data)
     {
         kiss->Status = KISS_STATUS_ERROR_STATE;
         return KISS_ERR_INVALID_PARAMS;
@@ -1212,12 +1212,12 @@ uint32_t kiss_crc32(kiss_instance_t *const kiss, const uint8_t *data, size_t len
 */
 uint32_t kiss_crc32_push(kiss_instance_t *const kiss, uint32_t prev_crc, const uint8_t *data, size_t len)
 {
-    if(kiss == NULL)
+    if(NULL == kiss)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
 
-    if(data == NULL)
+    if(NULL == data)
     {
         kiss->Status = KISS_STATUS_ERROR_STATE;
         return KISS_ERR_INVALID_PARAMS;
@@ -1225,7 +1225,7 @@ uint32_t kiss_crc32_push(kiss_instance_t *const kiss, uint32_t prev_crc, const u
     
     uint32_t crc;
 
-    if(prev_crc == 0)
+    if(0 == prev_crc)
     {
         crc = prev_crc ^ 0xFFFFFFFF;
     }
@@ -1258,12 +1258,12 @@ uint32_t kiss_crc32_push(kiss_instance_t *const kiss, uint32_t prev_crc, const u
 */
 uint32_t kiss_crc32(kiss_instance_t *const kiss, const uint8_t *const data, size_t len)
 {
-    if(kiss == NULL)
+    if(NULL == kiss)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
 
-    if(data == NULL)
+    if(NULL == data)
     {
         kiss->Status = KISS_STATUS_ERROR_STATE;
         return KISS_ERR_INVALID_PARAMS;
@@ -1294,12 +1294,12 @@ uint32_t kiss_crc32(kiss_instance_t *const kiss, const uint8_t *const data, size
 */
 uint32_t kiss_crc32_push(kiss_instance_t *const kiss, uint32_t prev_crc, const uint8_t *const data, size_t len)
 {
-    if(kiss == NULL)
+    if(NULL == kiss)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
 
-    if(data == NULL)
+    if(NULL == data)
     {
         kiss->Status = KISS_STATUS_ERROR_STATE;
         return KISS_ERR_INVALID_PARAMS;
@@ -1307,7 +1307,7 @@ uint32_t kiss_crc32_push(kiss_instance_t *const kiss, uint32_t prev_crc, const u
 
     uint32_t crc;
 
-    if(prev_crc == 0)
+    if(0 == prev_crc)
     {
         crc = prev_crc ^ 0xFFFFFFFF;
     }
@@ -1344,7 +1344,7 @@ uint32_t kiss_crc32_push(kiss_instance_t *const kiss, uint32_t prev_crc, const u
  */
 int kiss_verify_crc32(kiss_instance_t *const kiss, const uint8_t *const data, size_t len, uint32_t expected_crc)
 {
-    return (kiss_crc32(kiss, data, len) == expected_crc) ? KISS_OK : 1;
+    return (expected_crc == kiss_crc32(kiss, data, len)) ? KISS_OK : 1;
 }
 
 
@@ -1369,7 +1369,7 @@ int kiss_verify_crc32(kiss_instance_t *const kiss, const uint8_t *const data, si
 int kiss_encode_crc32(kiss_instance_t *const kiss, uint8_t *const data, size_t length, uint8_t header)
 {
     // Check for null pointers or invalid input length
-    if (kiss == NULL || data == NULL || length == 0) 
+    if (NULL == kiss || NULL == data || 0 == length) 
     {
         return KISS_ERR_INVALID_PARAMS;
     }
@@ -1385,7 +1385,7 @@ int kiss_encode_crc32(kiss_instance_t *const kiss, uint8_t *const data, size_t l
 
     // calculate CRC32 on ORIGINAL data before any KISS encoding
     uint32_t crc = kiss_crc32(kiss, data, length);
-    if(kiss->Status == KISS_STATUS_ERROR_STATE)
+    if(KISS_STATUS_ERROR_STATE == kiss->Status)
     {
         return KISS_ERR_STATUS;
     }
@@ -1436,7 +1436,7 @@ int kiss_encode_crc32(kiss_instance_t *const kiss, uint8_t *const data, size_t l
 */
 int kiss_decode_crc32(kiss_instance_t *const kiss, uint8_t *const output, size_t max_out_size, size_t *const output_length, uint8_t *const header)
 {
-    if (kiss == NULL || output == NULL || output_length == NULL)
+    if (NULL == kiss || NULL == output || NULL == output_length)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
