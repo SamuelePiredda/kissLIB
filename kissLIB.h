@@ -307,7 +307,7 @@ int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, size_t buffer_size, uint8_
  *
  * Returns: 0 on success, or an error code (invalid params or buffer overflow).
  */
-int kiss_encode(kiss_instance_t *kiss, uint8_t *data, size_t length, const uint8_t header);
+int kiss_encode(kiss_instance_t *kiss, uint8_t *data, size_t length, uint8_t header);
 
 
 

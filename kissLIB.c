@@ -194,7 +194,7 @@ int kiss_init(kiss_instance_t *kiss, uint8_t *buffer, size_t buffer_size, uint8_
  *  - KISS_ERR_INVALID_PARAMS(1) for bad inputs
  *  - KISS_ERR_BUFFER_OVERFLOW(3) if the provided working buffer is too small
  */
-int kiss_encode(kiss_instance_t *kiss, uint8_t *data, size_t length, const uint8_t header)
+int kiss_encode(kiss_instance_t *kiss, uint8_t *data, size_t length, uint8_t header)
 {
     /* check for parameters error or size of the buffer too small for the payload */
     if(kiss == NULL)
