@@ -28,6 +28,10 @@ struct kiss_instance_t {
 };
 ```
 
+The **buffer** pointer contains the buffer array that the user has created. This is done in order to allow user to use static or dynamic memory allocation as he wishes. The **buffer_size** contains the length of the buffer. The **index** parameter contains the length of the frame that is ready to be transmitted or that has been received, it should not be used by the user since all the kiss functions use it. The **TXdelay** is the delay between receiving and transmitting and it is a number between 0 and 255, (which should be multiply by 10 so it is a delay that ranges between 0 and 2550ms) this value is used by the user and it is never used by the library. The **write** and **read** functions are the callback functions that the user must code in order to transmit and receive from whatever physical link (please keep in mind that it is not a multi-point protocol so you need another layer on top if you want to use kiss for multi-point links e.g. CAN bus). The **Status** variable contains the current status of the kiss instance and should not be modified by the user, only read to be sure in what state the kiss intance is in. The **context** pointer is an extra pointer that the user can use pointing at useful structures (e.g. in HAL you can use UART_HandleTypeDef). The **padding** parameter is the amount of FEND byte to send before the real frame (it is a number between 0 and 32).
+
+
+
 Start by creating the instance of kiss
 ```C
 kiss_instance_t kiss_i;
