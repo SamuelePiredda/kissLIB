@@ -200,7 +200,7 @@ int32_t kiss_init(kiss_instance_t *const kiss, uint8_t *const buffer, size_t buf
  *  - KISS_ERR_INVALID_PARAMS(1) for bad inputs
  *  - KISS_ERR_BUFFER_OVERFLOW(3) if the provided working buffer is too small
  */
-int32_t kiss_encode(kiss_instance_t *const kiss, uint8_t *const data, size_t length, uint8_t header)
+int32_t kiss_encode(kiss_instance_t *const kiss, const uint8_t *const data, size_t length, uint8_t header)
 {
     /* check for parameters error or size of the buffer too small for the payload */
     if(NULL == kiss)
@@ -322,7 +322,7 @@ int32_t kiss_encode(kiss_instance_t *const kiss, uint8_t *const data, size_t len
  * - KISS_ERR_INVALID_FRAME(2) the kiss buffer doesn't have a KISS_FEND at kiss index
  * - KISS_ERR_BUFFER_OVERFLOW(3) the kiss buffer is too small
  */
-int32_t kiss_push_encode(kiss_instance_t *const kiss, uint8_t *const data, size_t length)
+int32_t kiss_push_encode(kiss_instance_t *const kiss, const uint8_t *const data, size_t length)
 {
     /* control that parameters are good */
     if(NULL == kiss || NULL == data || 0 == length) 
@@ -656,7 +656,7 @@ int32_t kiss_send_frame(kiss_instance_t *const kiss)
  * - KISS_ERR_BUFFER_OVERFLOW(3) if the provided working buffer is too small
  * - generic error code from kiss_send_frame on failure
  */
-int32_t kiss_encode_and_send(kiss_instance_t *const kiss, uint8_t *const data, size_t length, uint8_t header)
+int32_t kiss_encode_and_send(kiss_instance_t *const kiss, const uint8_t *const data, size_t length, uint8_t header)
 {
     /* error container */
     int32_t err = KISS_OK;
@@ -1059,7 +1059,7 @@ int32_t kiss_send_ping(kiss_instance_t *const kiss)
 * - KISS_ERR_INVALID_PARAMS(1) if inputs are invalid
 * - any other error
 */
-int32_t kiss_send_param(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const param, size_t len, uint8_t header)
+int32_t kiss_send_param(kiss_instance_t *const kiss, uint16_t ID, const uint8_t *const param, size_t len, uint8_t header)
 {
     /* check if kiss instance is null or parameter pointer is null */
     if(NULL == kiss || NULL == param) 
@@ -1118,7 +1118,7 @@ int32_t kiss_send_param(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const
 * - KISS_ERR_INVALID_PARAMS(1) if inputs are invalid
 * - any other error
 */
-int32_t kiss_send_param_crc32(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const param, size_t len, uint8_t header)
+int32_t kiss_send_param_crc32(kiss_instance_t *const kiss, uint16_t ID, const uint8_t *const param, size_t len, uint8_t header)
 {
     /* check basic errors */
     if(NULL == kiss || NULL == param) 
@@ -1386,7 +1386,7 @@ int32_t kiss_verify_crc32(kiss_instance_t *const kiss, const uint8_t *const data
 * - KISS_ERR_INVALID_PARAMS(1) if invalid parameters are passed to the function
 * - any other error
 */
-int32_t kiss_encode_crc32(kiss_instance_t *const kiss, uint8_t *const data, size_t length, uint8_t header)
+int32_t kiss_encode_crc32(kiss_instance_t *const kiss, const uint8_t *const data, size_t length, uint8_t header)
 {
     // Check for null pointers or invalid input length
     if (NULL == kiss || NULL == data || 0 == length) 
@@ -1535,7 +1535,7 @@ int32_t kiss_decode_crc32(kiss_instance_t *const kiss, uint8_t *const output, si
  * - KISS_OK(0) everything is ok
  * - any other error
  */
-int32_t kiss_encode_send_crc32(kiss_instance_t *const kiss, uint8_t *const data, size_t length, uint8_t header)
+int32_t kiss_encode_send_crc32(kiss_instance_t *const kiss, const uint8_t *const data, size_t length, uint8_t header)
 {
     int32_t err = kiss_encode_crc32(kiss, data, length, header);
     if(err != KISS_OK)

@@ -6,7 +6,6 @@ extern "C" {
 #endif
 
 #include <stdint.h>
-#include <stdlib.h>
 #include <stddef.h>
 
 #define KISSLIB_VERSION "2.0.0"
@@ -270,7 +269,7 @@ int32_t kiss_init(kiss_instance_t *const kiss, uint8_t *const buffer, size_t buf
  *
  * Returns: 0 on success, or an error code (invalid params or buffer overflow).
  */
-int32_t kiss_encode(kiss_instance_t *const kiss, uint8_t *const data, size_t length, uint8_t header);
+int32_t kiss_encode(kiss_instance_t *const kiss, const uint8_t *const data, size_t length, uint8_t header);
 
 
 
@@ -286,7 +285,7 @@ int32_t kiss_encode(kiss_instance_t *const kiss, uint8_t *const data, size_t len
  * - 0, if everything is ok
  * - Any other number from KISS_ERR_xxx if an error occoured
  */
-int32_t kiss_push_encode(kiss_instance_t *const kiss, uint8_t *const data, size_t length);
+int32_t kiss_push_encode(kiss_instance_t *const kiss, const uint8_t *const data, size_t length);
 
 
 
@@ -338,7 +337,7 @@ int32_t kiss_send_frame(kiss_instance_t *const kiss);
  * - KISS_ERR_BUFFER_OVERFLOW if the provided working buffer is too small
  * - generic error code from kiss_send_frame on failure
  */
-int32_t kiss_encode_and_send(kiss_instance_t *const kiss, uint8_t *const data, size_t length, uint8_t header);
+int32_t kiss_encode_and_send(kiss_instance_t *const kiss, const uint8_t *const data, size_t length, uint8_t header);
 
 
 
@@ -488,7 +487,7 @@ int32_t kiss_send_ping(kiss_instance_t *const kiss);
 * - KISS_ERR_INVALID_PARAMS if inputs are invalid
 * - generic error code
 */
-int32_t kiss_send_param(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const param, size_t len, uint8_t header);
+int32_t kiss_send_param(kiss_instance_t *const kiss, uint16_t ID, const uint8_t *const param, size_t len, uint8_t header);
 
 
 /*
@@ -506,7 +505,7 @@ int32_t kiss_send_param(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const
 * - KISS_ERR_INVALID_PARAMS if inputs are invalid
 * - generic error code
 */
-int32_t kiss_send_param_crc32(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const param, size_t len, uint8_t header);
+int32_t kiss_send_param_crc32(kiss_instance_t *const kiss, uint16_t ID, const uint8_t *const param, size_t len, uint8_t header);
 
 
 
@@ -527,7 +526,7 @@ int32_t kiss_send_param_crc32(kiss_instance_t *const kiss, uint16_t ID, uint8_t 
  * - header: KISS header byte to use.
  * Returns: 0 on success, or an error code (invalid params or buffer overflow).
  */
-int32_t kiss_encode_crc32(kiss_instance_t *const kiss, uint8_t *const data, size_t length, uint8_t header);
+int32_t kiss_encode_crc32(kiss_instance_t *const kiss, const uint8_t *const data, size_t length, uint8_t header);
 
 
 
@@ -548,7 +547,7 @@ int32_t kiss_encode_crc32(kiss_instance_t *const kiss, uint8_t *const data, size
  * Returns:
  * 0 on success, or an error code not equal to zero
  */
-int32_t kiss_encode_send_crc32(kiss_instance_t *const kiss, uint8_t *const data, size_t length, uint8_t header);
+int32_t kiss_encode_send_crc32(kiss_instance_t *const kiss, const uint8_t *const data, size_t length, uint8_t header);
 
 
 /** 
