@@ -236,7 +236,7 @@ uint8_t rx_header;
 /* try to receive with a maximum attempts */
 kiss_err = kiss_receive_frame(&my_kiss, 1);
 
-if(kiss_err == KISS_OK)
+if(KISS_OK == kiss_err)
 {
     /* packet have been received */
 
@@ -259,7 +259,7 @@ if(kiss_err == KISS_OK)
     }
 
 }
-else if(kiss_err == KISS_ERR_NO_DATA_RECEIVED)
+else if(KISS_ERR_NO_DATA_RECEIVED == kiss_err)
 {
     /* no data received */
 }
