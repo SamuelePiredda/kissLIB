@@ -13,6 +13,8 @@ extern "C" {
 
 /*
 * This lib is the most generic possible but it tries to reduce the RAM usage for Arduino.
+* Author: Samuele Piredda
+* trying to be compliant to MISRA-C 2012
 */
 
 
