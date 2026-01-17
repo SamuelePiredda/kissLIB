@@ -8,7 +8,6 @@ extern "C" {
 #include <stdint.h>
 #include <stdlib.h>
 #include <stddef.h>
-#include <stdio.h>
 
 #define KISSLIB_VERSION "2.0.0"
 
@@ -17,42 +16,6 @@ extern "C" {
 * This lib is the most generic possible but it tries to reduce the RAM usage for Arduino.
 */
 
-/* some generic unions for useful data */
-typedef union 
-{
-    uint16_t value;
-    uint8_t bytes[sizeof(uint16_t)];
-} uint16_kiss;
-
-typedef union
-{
-    uint32_t value;
-    uint8_t bytes[sizeof(uint32_t)];
-} uint32_kiss;
-
-typedef union 
-{
-    int16_t value;
-    uint8_t bytes[sizeof(int16_t)];
-} int16_kiss;
-
-typedef union 
-{
-    int32_t value;
-    uint8_t bytes[sizeof(int32_t)];
-} int32_kiss;
-
-typedef union 
-{
-    float value;
-    uint8_t bytes[sizeof(float)];
-} float_kiss;
-
-typedef union
-{
-    double value;
-    uint8_t bytes[sizeof(double)];
-} double_kiss;
 
 
 
@@ -159,7 +122,7 @@ typedef struct kiss_instance_t kiss_instance_t;
  *  - KISS_OK(0) if everything went good
  *  - Any other number for error
  */
-typedef int (*kiss_write_fn)(kiss_instance_t *const kiss, const uint8_t *const data, size_t length);
+typedef int32_t (*kiss_write_fn)(kiss_instance_t *const kiss, const uint8_t *const data, size_t length);
 
 /** Transport callback: read `length` bytes into `data` from transport.
  *
@@ -176,7 +139,7 @@ typedef int (*kiss_write_fn)(kiss_instance_t *const kiss, const uint8_t *const d
  *  - KISS_OK(0) if everything went good
  *  - Any other number for error
  */
-typedef int (*kiss_read_fn)(kiss_instance_t *const kiss, uint8_t *const buffer, size_t dataLen, size_t *const read);
+typedef int32_t (*kiss_read_fn)(kiss_instance_t *const kiss, uint8_t *const buffer, size_t dataLen, size_t *const read);
 
 
 
@@ -263,7 +226,7 @@ uint32_t kiss_crc32_push(kiss_instance_t *const kiss, uint32_t prev_crc, const u
  * Returns:
  *  - 1 if checksum matches, 0 otherwise
  */
-int kiss_verify_crc32(kiss_instance_t *const kiss, const uint8_t *const data, size_t len, uint32_t expected_crc);
+int32_t kiss_verify_crc32(kiss_instance_t *const kiss, const uint8_t *const data, size_t len, uint32_t expected_crc);
 
 
 
@@ -290,7 +253,7 @@ int kiss_verify_crc32(kiss_instance_t *const kiss, const uint8_t *const data, si
  *
  * Returns: 0 on success or a KISS_ERR_* code on failure.
  */
-int kiss_init(kiss_instance_t *const kiss, uint8_t *const buffer, size_t buffer_size, uint8_t TXdelay, kiss_write_fn write, kiss_read_fn read, void *const context, uint8_t padding);
+int32_t kiss_init(kiss_instance_t *const kiss, uint8_t *const buffer, size_t buffer_size, uint8_t TXdelay, kiss_write_fn write, kiss_read_fn read, void *const context, uint8_t padding);
 
 
 /** Encode `length` bytes from `data` into the instance working buffer.
@@ -307,7 +270,7 @@ int kiss_init(kiss_instance_t *const kiss, uint8_t *const buffer, size_t buffer_
  *
  * Returns: 0 on success, or an error code (invalid params or buffer overflow).
  */
-int kiss_encode(kiss_instance_t *const kiss, uint8_t *const data, size_t length, uint8_t header);
+int32_t kiss_encode(kiss_instance_t *const kiss, uint8_t *const data, size_t length, uint8_t header);
 
 
 
@@ -323,7 +286,7 @@ int kiss_encode(kiss_instance_t *const kiss, uint8_t *const data, size_t length,
  * - 0, if everything is ok
  * - Any other number from KISS_ERR_xxx if an error occoured
  */
-int kiss_push_encode(kiss_instance_t *const kiss, uint8_t *const data, size_t length);
+int32_t kiss_push_encode(kiss_instance_t *const kiss, uint8_t *const data, size_t length);
 
 
 
@@ -338,7 +301,7 @@ int kiss_push_encode(kiss_instance_t *const kiss, uint8_t *const data, size_t le
  *
  * Returns: 0 on success or a KISS_ERR_* code on failure.
  */
-int kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t output_max_size, size_t *const output_length, uint8_t *const header);
+int32_t kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t output_max_size, size_t *const output_length, uint8_t *const header);
 
 
 /** Send an encoded frame over the transport using the `write` callback.
@@ -351,7 +314,7 @@ int kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t outpu
  * - KISS_ERR_INVALID_PARAMS if inputs are invalid
  * - generic error code from transport write function on failure
  */
-int kiss_send_frame(kiss_instance_t *const kiss);
+int32_t kiss_send_frame(kiss_instance_t *const kiss);
 
 
 
@@ -375,7 +338,7 @@ int kiss_send_frame(kiss_instance_t *const kiss);
  * - KISS_ERR_BUFFER_OVERFLOW if the provided working buffer is too small
  * - generic error code from kiss_send_frame on failure
  */
-int kiss_encode_and_send(kiss_instance_t *const kiss, uint8_t *const data, size_t length, uint8_t header);
+int32_t kiss_encode_and_send(kiss_instance_t *const kiss, uint8_t *const data, size_t length, uint8_t header);
 
 
 
@@ -401,7 +364,7 @@ int kiss_encode_and_send(kiss_instance_t *const kiss, uint8_t *const data, size_
  * - KISS_ERR_NO_DATA_RECEIVED if no complete frame is received within maxAttempts
  * - generic error code from transport read function on failure
  */
-int kiss_receive_frame(kiss_instance_t *const kiss, uint32_t maxAttempts);
+int32_t kiss_receive_frame(kiss_instance_t *const kiss, uint32_t maxAttempts);
 
 
 
@@ -426,7 +389,7 @@ int kiss_receive_frame(kiss_instance_t *const kiss, uint32_t maxAttempts);
  * - KISS_ERR_NO_DATA_RECEIVED if no complete frame is received within maxAttempts
  * - generic error code from transport read function on failure
  */
-int kiss_receive_and_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t output_max_size, size_t *const output_length, uint32_t maxAttempts, uint8_t *const header);
+int32_t kiss_receive_and_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t output_max_size, size_t *const output_length, uint32_t maxAttempts, uint8_t *const header);
 
 
 
@@ -445,7 +408,7 @@ int kiss_receive_and_decode(kiss_instance_t *const kiss, uint8_t *const output, 
  * - KISS_ERR_INVALID_PARAMS if inputs are invalid
  * - generic error code from kiss_send_frame on failure
  */
-int kiss_set_TXdelay(kiss_instance_t *const kiss,  uint8_t tx_delay);
+int32_t kiss_set_TXdelay(kiss_instance_t *const kiss,  uint8_t tx_delay);
 
 /** 
  * kiss_set_speed
@@ -460,7 +423,7 @@ int kiss_set_TXdelay(kiss_instance_t *const kiss,  uint8_t tx_delay);
  * - KISS_ERR_INVALID_PARAMS if inputs are invalid
  * - generic error code from kiss_send_frame on failure
  */
-int kiss_set_speed(kiss_instance_t *const kiss, uint32_t BaudRate);
+int32_t kiss_set_speed(kiss_instance_t *const kiss, uint32_t BaudRate);
 
 
 
@@ -475,7 +438,7 @@ int kiss_set_speed(kiss_instance_t *const kiss, uint32_t BaudRate);
  * - KISS_ERR_INVALID_PARAMS if inputs are invalid
  * - generic error code from kiss_send_frame on failure
  */
-int kiss_send_ack(kiss_instance_t *const kiss);
+int32_t kiss_send_ack(kiss_instance_t *const kiss);
 
 
 /**
@@ -489,7 +452,7 @@ int kiss_send_ack(kiss_instance_t *const kiss);
  * - KISS_ERR_INVALID_PARAMS if inputs are invalid
  * - generic error code from kiss_send_frame on failure
  */
-int kiss_send_nack(kiss_instance_t *const kiss);
+int32_t kiss_send_nack(kiss_instance_t *const kiss);
 
 
 
@@ -505,7 +468,7 @@ int kiss_send_nack(kiss_instance_t *const kiss);
  * - KISS_ERR_INVALID_PARAMS if inputs are invalid
  * - generic error code from kiss_send_frame on failure
  */
-int kiss_send_ping(kiss_instance_t *const kiss);
+int32_t kiss_send_ping(kiss_instance_t *const kiss);
 
 
 
@@ -525,7 +488,7 @@ int kiss_send_ping(kiss_instance_t *const kiss);
 * - KISS_ERR_INVALID_PARAMS if inputs are invalid
 * - generic error code
 */
-int kiss_send_param(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const param, size_t len, uint8_t header);
+int32_t kiss_send_param(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const param, size_t len, uint8_t header);
 
 
 /*
@@ -543,7 +506,7 @@ int kiss_send_param(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const par
 * - KISS_ERR_INVALID_PARAMS if inputs are invalid
 * - generic error code
 */
-int kiss_send_param_crc32(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const param, size_t len, uint8_t header);
+int32_t kiss_send_param_crc32(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const param, size_t len, uint8_t header);
 
 
 
@@ -564,7 +527,7 @@ int kiss_send_param_crc32(kiss_instance_t *const kiss, uint16_t ID, uint8_t *con
  * - header: KISS header byte to use.
  * Returns: 0 on success, or an error code (invalid params or buffer overflow).
  */
-int kiss_encode_crc32(kiss_instance_t *const kiss, uint8_t *const data, size_t length, uint8_t header);
+int32_t kiss_encode_crc32(kiss_instance_t *const kiss, uint8_t *const data, size_t length, uint8_t header);
 
 
 
@@ -585,7 +548,7 @@ int kiss_encode_crc32(kiss_instance_t *const kiss, uint8_t *const data, size_t l
  * Returns:
  * 0 on success, or an error code not equal to zero
  */
-int kiss_encode_send_crc32(kiss_instance_t *const kiss, uint8_t *const data, size_t length, uint8_t header);
+int32_t kiss_encode_send_crc32(kiss_instance_t *const kiss, uint8_t *const data, size_t length, uint8_t header);
 
 
 /** 
@@ -607,7 +570,7 @@ int kiss_encode_send_crc32(kiss_instance_t *const kiss, uint8_t *const data, siz
  *  - KISS_ERR_INVALID_PARAMS for bad pointers
  *  - KISS_ERR_INVALID_FRAME for malformed frames or bad escape sequences
  */
-int kiss_decode_crc32(kiss_instance_t *const kiss, uint8_t *const output, size_t max_out_size, size_t *const output_length, uint8_t *const header);
+int32_t kiss_decode_crc32(kiss_instance_t *const kiss, uint8_t *const output, size_t max_out_size, size_t *const output_length, uint8_t *const header);
 
 
 
