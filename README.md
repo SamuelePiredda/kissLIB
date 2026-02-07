@@ -89,9 +89,10 @@ int32_t kiss_send_ack(kiss_instance_t *const kiss);
 int32_t kiss_send_nack(kiss_instance_t *const kiss);
 int32_t kiss_send_ping(kiss_instance_t *const kiss);
 int32_t kiss_set_param(kiss_instance_t *const kiss, uint16_t ID, 
-                    const uint8_t *const param, size_t len, uint8_t header);
+                    const uint8_t *const param, size_t len);
 int32_t kiss_request_param(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const output, 
-                    size_t max_out_size, size_t *const output_length, uint32_t maxAttempts);
+                    size_t max_out_size, size_t *const output_length, uint32_t maxAttempts, 
+                    uint8_t expected_header);
 int32_t kiss_send_command(kiss_instance_t *const kiss, uint16_t *command);
 ```
 
@@ -103,6 +104,12 @@ int32_t kiss_receive_and_decode(kiss_instance_t *const kiss, uint8_t *const outp
                         size_t *const output_length, uint32_t maxAttempts, uint8_t *const header);
 ```
 
+The following function extract the parameter ID (2 bytes) and parameter new value (**MAXIMUM 254 bytes**) from a set_param request:
+```C
+int32_t kiss_extract_param(kiss_instance_t *const kiss, uint16_t *const ID, uint8_t *const param, 
+                        size_t max_param_size, size_t *const param_length)
+```
+
 The following functions encode and decode the data with four more bytes for CRC32 at the end of the frame.
 ```C
 int32_t kiss_decode_crc32(kiss_instance_t *const kiss, uint8_t *const output, 
@@ -112,9 +119,10 @@ int32_t kiss_encode_crc32(kiss_instance_t *const kiss, const uint8_t *const data
 int32_t kiss_encode_send_crc32(kiss_instance_t *const kiss, const uint8_t *const data, 
                     size_t length, uint8_t header)
 int32_t kiss_set_param_crc32(kiss_instance_t *const kiss, uint16_t ID, const uint8_t *const param, 
-                    size_t len, uint8_t header);
+                    size_t len);
 int32_t kiss_request_param_crc32(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const output, 
-                    size_t max_out_size, size_t *const output_length, uint32_t maxAttempts);
+                    size_t max_out_size, size_t *const output_length, uint32_t maxAttempts,
+                    uint8_t expected_header);
 int32_t kiss_send_command_crc32(kiss_instance_t *const kiss, uint16_t *command);
 ```
 
@@ -319,13 +327,15 @@ if(KISS_OK == kiss_obc_err)
         /* message has been received */
         if(KISS_HEADER_COMMAND == rx_header)
         {
+            /* the command from array to uint16_t */
             uint16_t cmd = (uint16_t)rx_buffer[0] | ( (uint16_t)(rx_buffer[1]) << 8 );
-
+            /* switch case with the command */
             switch(cmd)
             {
                 ....
                 case EPS_CH1_TURN_OFF:
                     ....
+                    /* add a send_ack to inform the OBC that the command has been received and performed */
                     break;
                 ....
             }
@@ -334,3 +344,171 @@ if(KISS_OK == kiss_obc_err)
 }
 
 ```
+
+If you want to add CRC32 use the crc32 functions to add more safety if you expect a noisy channel with high bit error rate. (e.g. UART, I2C)
+
+## 2. Set other device parameter
+
+In this case we want to set a parameter of the other device. For example we would like to change the current limiter in the EPS for channel 3. The OBC has the following definitions:
+
+- EPS_PARAM_CH1_MAX_CURRENT 4325
+
+The function is the following:
+```C
+int32_t kiss_set_param(kiss_instance_t *const kiss, uint16_t ID, 
+                    const uint8_t *const param, size_t len);
+```
+
+The implementation example is the following:
+
+```C
+/* current limiting in mA, from 6000 to 1000 because we suspect the device in CH1 has some failures and sometimes draws too much current and reset */
+uint16_t curr_lim_ma = 1000;
+
+/* create a byte array from the uint16_t variable */
+uint8_t bs[2] = {(uint8_t)curr_lim_ma, (uint8_t)(curr_lim_ma >> 8)};
+kiss_eps_err = kiss_set_param(&kiss_eps_i, EPS_PARAM_CH1_MAX_CURRENT, bs, 2);
+
+/* Then you can maybe wait for an ack to know that the EPS has changed the parameter */
+```
+
+The header used for this echange is **KISS_HEADER_SET_PARAM**.
+
+From the other end, the EPS will do something like this:
+
+```C
+
+kiss_obc_err = kiss_receive_frame(&kiss_obc_i, 1);
+
+if(KISS_OK == kiss_obc_err)
+{
+    /* decoding the message */
+    kiss_obc_err = kiss_decode(&kiss_obc_i, rx_buffer, KISS_BUFFER_SIZE, &rx_len, &rx_header);
+
+    if(kiss_obc_err != KISS_OK)
+    {
+        /* error handling */
+    }
+    else
+    {
+        /* message has been received */
+        if(KISS_HEADER_SET_PARAM == rx_header)
+        {
+           /* ID container */
+           uint16_t ID = 0;
+           /* the value of the parameter, use 64 just for safety, but it will be a value of 1,2,4,8 bytes */
+           uint8_t value[64];
+           /* value length */
+           size_t value_len = 0;
+           /* extract the parameter */
+           kiss_obc_err = kiss_extract_param(&kiss_obc_i, &ID, value, 64, &value_len);
+
+           if(KISS_OK == kiss_obc_err)
+           {
+                /* switch case for the type of parameter change */
+                switch(ID)
+                {
+                    case CH1_CURR_LIM:
+                        if(value_len == 2)
+                        {
+                            /* new current limiting value */
+                            CH1_CUR_LIM = (uint16_t)(value[0]) | ((uint16_t)(value[1]) << 8);
+                        }
+                        else
+                        {
+                            /* handle the error */
+                        }
+                        break;
+                }
+           }
+
+        }
+    }
+}
+
+```
+
+You can also use the CRC32 versions.
+
+## 3. Request other device parameter
+
+
+We request a parameter from the device, for instance a temperature or battery voltage. The following function is used:
+```C
+int32_t kiss_request_param(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const output, 
+                    size_t max_out_size, size_t *const output_length, uint32_t maxAttempts);
+```
+
+The implementation from the OBC that requests the battery voltage to the EPS is the following:
+```C
+uint8_t bs[2];
+size_t out_len;
+/* it requests the battery voltage which is a uint16_t and contains the battery voltage in mV */
+kiss_eps_err = kiss_request_param(&kiss_eps_i, EPS_PARAM_BP_mV, bs, 2, &out_len, KISS_HEADER_DATA(0));
+if(KISS_OK == kiss_eps_err)
+{
+    if(out_len == 2)
+    {
+        /* update the telemetry */
+        EPS_BP_mV = (uint16_t)bs[0] || ((uint16_t)bs[1] << 8);
+    }
+    else
+    {
+        /* error management */
+    }
+}
+```
+
+The implementation from the EPS side will be:
+```C
+
+kiss_obc_err = kiss_receive_frame(&kiss_obc_i, 1);
+
+if(KISS_OK == kiss_obc_err)
+{
+    /* decoding the message */
+    kiss_obc_err = kiss_decode(&kiss_obc_i, rx_buffer, KISS_BUFFER_SIZE, &rx_len, &rx_header);
+
+    if(kiss_obc_err != KISS_OK)
+    {
+        /* error handling */
+    }
+    else
+    {
+        /* message has been received */
+        if(KISS_HEADER_REQUEST_PARAM == rx_header)
+        {
+           /* extract the parameter, but only the ID */
+           kiss_obc_err = kiss_extract_param(&kiss_obc_i, &ID, NULL, 0, NULL);
+
+           if(KISS_OK == kiss_obc_err)
+           {
+                /* switch case for the type of parameter change */
+                switch(ID)
+                {
+                    case VBAT_mV:
+                        /* the HEADER_DATA in port 0 is used to respond to request of parameters */
+                        kiss_obc_err = kiss_encode_and_send(&kiss_obc_i, (uint8_t*)&TEL_VBAT_mV, 2, KISS_HEADER_DATA(0));
+                        if(kiss_obc_err != KISS_OK)
+                        {
+                            /* error handling */
+                        }
+                        break;
+                }
+           }
+
+        }
+    }
+}
+
+
+
+```
+
+
+
+You can also use the CRC32 versions.
+
+## 4. Send data to the other device
+
+Already looked at it, use the **KISS_HEADER_DATA** to know what type of data is arriving and where to store it or send it. The Most Significant Hex must be 0 to identify it is a data header, and the Least Significant Hex is a value from 0 to F (0-15) to identify where to store/send this data.

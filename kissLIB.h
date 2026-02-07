@@ -529,10 +529,11 @@ int32_t kiss_set_param_crc32(kiss_instance_t *const kiss, uint16_t ID, const uin
  * @param max_out_size: maximum size of the output buffer
  * @param output_length: pointer to receive the actual length of the output data
  * @param maxAttempts: maximum number of attempts to wait for the response
+ * @param expected_header: expected header byte in the response frame
  * ----------
  * @returns: Any number of errors or KISS_OK(0) if everything went ok
  */
-int32_t kiss_request_param(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const output, size_t max_out_size, size_t *const output_length, uint32_t maxAttempts);
+int32_t kiss_request_param(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const output, size_t max_out_size, size_t *const output_length, uint32_t maxAttempts, uint8_t expected_header);
 
 
 
@@ -548,10 +549,11 @@ int32_t kiss_request_param(kiss_instance_t *const kiss, uint16_t ID, uint8_t *co
  * @param max_out_size: maximum size of the output buffer
  * @param output_length: pointer to receive the actual length of the output data
  * @param maxAttempts: maximum number of attempts to wait for the response
+ * @param expected_header: expected header byte in the response frame
  * ----------
  * @returns: Any number of errors or KISS_OK(0) if everything went ok
  */
-int32_t kiss_request_param_crc32(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const output, size_t max_out_size, size_t *const output_length, uint32_t maxAttempts);
+int32_t kiss_request_param_crc32(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const output, size_t max_out_size, size_t *const output_length, uint32_t maxAttempts, uint8_t expected_header);
 
 
 
@@ -643,6 +645,22 @@ int32_t kiss_encode_send_crc32(kiss_instance_t *const kiss, const uint8_t *const
  */
 int32_t kiss_decode_crc32(kiss_instance_t *const kiss, uint8_t *const output, size_t max_out_size, size_t *const output_length, uint8_t *const header);
 
+
+
+/**
+ * kiss_extract_param
+ * -----------------------
+ * @brief If the header of the fram is a set parameter header, this function extracts the parameter ID and value from the frame.
+ * ----------
+ * @param kiss: instance containing encoded frame data
+ * @param ID: pointer to variable that will receive the parameter ID (2 bytes)  
+ * @param param: buffer to receive the parameter value
+ * @param max_param_size: maximum size of the param buffer
+ * @param param_length: pointer to variable that will receive the actual length of the parameter value
+ * ----------
+ * @returns: Any number of errors or KISS_OK(0) if everything went ok
+ */
+int32_t kiss_extract_param(kiss_instance_t *const kiss, uint16_t *const ID, uint8_t *const param, size_t max_param_size, size_t *const param_length);
 
 
 
