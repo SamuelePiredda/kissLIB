@@ -298,3 +298,39 @@ For instance, if you want to turn off a channel for the Electrical Power Subsyst
 ```C
 kiss_eps_err = kiss_send_command(&kiss_eps_i, EPS_CH1_TURN_OFF);
 ```
+
+From the other end, the EPS will do something like this:
+
+```C
+
+kiss_obc_err = kiss_receive_frame(&kiss_obc_i, 1);
+
+if(KISS_OK == kiss_obc_err)
+{
+    /* decoding the message */
+    kiss_obc_err = kiss_decode(&kiss_obc_i, rx_buffer, KISS_BUFFER_SIZE, &rx_len, &rx_header);
+
+    if(kiss_obc_err != KISS_OK)
+    {
+        /* error handling */
+    }
+    else
+    {
+        /* message has been received */
+        if(KISS_HEADER_COMMAND == rx_header)
+        {
+            uint16_t cmd = (uint16_t)rx_buffer[0] | ( (uint16_t)(rx_buffer[1]) << 8 );
+
+            switch(cmd)
+            {
+                ....
+                case EPS_CH1_TURN_OFF:
+                    ....
+                    break;
+                ....
+            }
+        }
+    }
+}
+
+```
