@@ -86,6 +86,9 @@ extern "C" {
  * - KISS_HEADER_PING: control frame for ping requests. 0x80
  * - KISS_HEADER_ACK: control frame for acknowledgments. 0xA0
  * - KISS_HEADER_NACK: control frame for negative acknowledgments. 0xC0
+ * - KISS_HEADER_REQUEST_PARAM: control frame to request a parameter. 0x40
+ * - KISS_HEADER_SET_PARAM: control frame to set a parameter. 0x50
+ * - KISS_HEADER_COMMAND: control frame to send a command. 0x70
  * - Additional control frame types may be defined in the future.
  */
 #define KISS_HEADER_DATA(port) ((uint8_t)(port & 0x0F))
@@ -94,6 +97,9 @@ extern "C" {
 #define KISS_HEADER_PING 0x80
 #define KISS_HEADER_ACK 0xA0
 #define KISS_HEADER_NACK 0xA5
+#define KISS_HEADER_REQUEST_PARAM 0x40
+#define KISS_HEADER_SET_PARAM 0x50
+#define KISS_HEADER_COMMAND 0x70
 
 
 
@@ -489,7 +495,7 @@ int32_t kiss_send_ping(kiss_instance_t *const kiss);
 * - KISS_ERR_INVALID_PARAMS if inputs are invalid
 * - generic error code
 */
-int32_t kiss_send_param(kiss_instance_t *const kiss, uint16_t ID, const uint8_t *const param, size_t len, uint8_t header);
+int32_t kiss_set_param(kiss_instance_t *const kiss, uint16_t ID, const uint8_t *const param, size_t len);
 
 
 /*
@@ -507,8 +513,72 @@ int32_t kiss_send_param(kiss_instance_t *const kiss, uint16_t ID, const uint8_t 
 * - KISS_ERR_INVALID_PARAMS if inputs are invalid
 * - generic error code
 */
-int32_t kiss_send_param_crc32(kiss_instance_t *const kiss, uint16_t ID, const uint8_t *const param, size_t len, uint8_t header);
+int32_t kiss_set_param_crc32(kiss_instance_t *const kiss, uint16_t ID, const uint8_t *const param, size_t len);
 
+
+
+
+/**
+ * kiss_request_param
+ * -------------------
+ * @brief Send a parameter request to the other device and wait for the response.
+ * ----------
+ * @param kiss: initialized instance
+ * @param ID: 2 bytes for the ID of the param to request
+ * @param output: buffer to receive the parameter value
+ * @param max_out_size: maximum size of the output buffer
+ * @param output_length: pointer to receive the actual length of the output data
+ * @param maxAttempts: maximum number of attempts to wait for the response
+ * ----------
+ * @returns: Any number of errors or KISS_OK(0) if everything went ok
+ */
+int32_t kiss_request_param(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const output, size_t max_out_size, size_t *const output_length, uint32_t maxAttempts);
+
+
+
+/**
+ * kiss_request_param_crc32
+ * -------------------
+ * @brief Send a parameter request to the other device with CRC32 and wait for the response with CRC32 verification.
+ * ----------
+ * @param kiss: initialized instance
+ * @param ID: 2 bytes for the ID of the param to request
+ * @param header: header byte to use for the request
+ * @param output: buffer to receive the parameter value
+ * @param max_out_size: maximum size of the output buffer
+ * @param output_length: pointer to receive the actual length of the output data
+ * @param maxAttempts: maximum number of attempts to wait for the response
+ * ----------
+ * @returns: Any number of errors or KISS_OK(0) if everything went ok
+ */
+int32_t kiss_request_param_crc32(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const output, size_t max_out_size, size_t *const output_length, uint32_t maxAttempts);
+
+
+
+/**
+ * kiss_send_command
+ * -------------------
+ * @brief Send a command to the other device. The command is a 2 bytes value.
+ * ----------
+ * @param kiss: initialized instance
+ * @param command: pointer to the 2 bytes command to send
+ * ----------
+ * @returns: Any number of errors or KISS_OK(0) if everything went ok
+ */
+int32_t kiss_send_command(kiss_instance_t *const kiss, uint16_t *command);
+
+
+/**
+ * kiss_send_command_crc32
+ * -------------------
+ * @brief Send a command to the other device with CRC32. The command is a 2 bytes value.
+ * ----------
+ * @param kiss: initialized instance
+ * @param command: pointer to the 2 bytes command to send
+ * ----------
+ * @returns: Any number of errors or KISS_OK(0) if everything went ok
+ */
+int32_t kiss_send_command_crc32(kiss_instance_t *const kiss, uint16_t *command);
 
 
 

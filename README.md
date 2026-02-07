@@ -88,8 +88,11 @@ int32_t kiss_set_speed(kiss_instance_t *const kiss, uint32_t BaudRate);
 int32_t kiss_send_ack(kiss_instance_t *const kiss);
 int32_t kiss_send_nack(kiss_instance_t *const kiss);
 int32_t kiss_send_ping(kiss_instance_t *const kiss);
-int32_t kiss_send_param(kiss_instance_t *const kiss, uint16_t ID, 
+int32_t kiss_set_param(kiss_instance_t *const kiss, uint16_t ID, 
                     const uint8_t *const param, size_t len, uint8_t header);
+int32_t kiss_request_param(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const output, 
+                    size_t max_out_size, size_t *const output_length, uint32_t maxAttempts);
+int32_t kiss_send_command(kiss_instance_t *const kiss, uint16_t *command);
 ```
 
 To quickly encode and send or receive and decode use the following functions
@@ -108,8 +111,11 @@ int32_t kiss_encode_crc32(kiss_instance_t *const kiss, const uint8_t *const data
                     size_t length, const uint8_t header);
 int32_t kiss_encode_send_crc32(kiss_instance_t *const kiss, const uint8_t *const data, 
                     size_t length, uint8_t header)
-int32_t kiss_send_param_crc32(kiss_instance_t *const kiss, uint16_t ID, const uint8_t *const param, 
+int32_t kiss_set_param_crc32(kiss_instance_t *const kiss, uint16_t ID, const uint8_t *const param, 
                     size_t len, uint8_t header);
+int32_t kiss_request_param_crc32(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const output, 
+                    size_t max_out_size, size_t *const output_length, uint32_t maxAttempts);
+int32_t kiss_send_command_crc32(kiss_instance_t *const kiss, uint16_t *command);
 ```
 
 
@@ -267,4 +273,28 @@ else
 {
     /* handling any other error */
 }
+```
+
+
+# Use cases for satellite
+
+Typically in Cubesats the OBC performs four actions to other devices:
+1. Send a command
+2. Set other device parameter
+3. Request other device parameter
+4. Send data to the other device (typically this is for large amount of data, such as sending data to the radio for downlink)
+
+This library has easy functions to work with for these four actions.
+
+## 1. Sending a command
+
+With this library you can send a command to the other device with one single function, without or with CRC32 verification.
+
+```C
+int32_t kiss_send_command(kiss_instance_t *const kiss, uint16_t *command);
+```
+This first function takes has parameters a kiss instance and the 2 bytes command to send. It encodes the data and send it. The header used is **KISS_HEADER_COMMAND** which can be used to the other device to quickly search if the data arrived is a command.
+For instance, if you want to turn off a channel for the Electrical Power Subsystem you can simply write:
+```C
+kiss_eps_err = kiss_send_command(&kiss_eps_i, EPS_CH1_TURN_OFF);
 ```
