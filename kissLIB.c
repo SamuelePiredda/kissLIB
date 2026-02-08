@@ -671,7 +671,6 @@ int32_t kiss_encode_and_send(kiss_instance_t *const kiss, const uint8_t *const d
     return kiss_send_frame(kiss);
 }
 
-
 /**
  * kiss_receive_frame
  * ------------------
@@ -740,6 +739,7 @@ int32_t kiss_receive_frame(kiss_instance_t *const kiss, uint32_t maxAttempts)
         /* we received something, hence we start searching for the frame inside */
         for(size_t i = new_index; i < kiss->index; i++)
         {
+
             /* if the frame is not started we go inside */
             if (!frame_started)
             {
@@ -750,7 +750,7 @@ int32_t kiss_receive_frame(kiss_instance_t *const kiss, uint32_t maxAttempts)
                     * in this case i >= new_index ALWAYS */
                     frame_started = 1;
                     kiss->buffer[new_index] = kiss->buffer[i];
-                    kiss->index++;
+                    new_index++;
                 } 
             }
             else
@@ -764,7 +764,7 @@ int32_t kiss_receive_frame(kiss_instance_t *const kiss, uint32_t maxAttempts)
                 {
                     /* we copy back the byte */
                     kiss->buffer[new_index] = kiss->buffer[i];
-                    kiss->index++;
+                    new_index++;
                 
                     /* if we are here the frame is already started and we are searching for the ending byte */
                     if (KISS_FEND == kiss->buffer[i])
@@ -1584,7 +1584,7 @@ int32_t kiss_request_param(kiss_instance_t *const kiss, uint16_t ID, uint8_t *co
     uint8_t id_[2] = {(uint8_t) ID, (uint8_t)(ID >> 8)};
 
     /* encode the parameter ID */
-    err = kiss_encode(kiss, id_, 2, KISS_HEADER_SET_PARAM);
+    err = kiss_encode(kiss, id_, 2, KISS_HEADER_REQUEST_PARAM);
     /* check for errors */
     if(err != KISS_OK) 
     {
@@ -1787,7 +1787,7 @@ int32_t kiss_extract_param(kiss_instance_t *const kiss, uint16_t *const ID, uint
     {
         return err;
     }
-    if(header != KISS_HEADER_SET_PARAM || out_len < 2)
+    if(( header != KISS_HEADER_SET_PARAM && header != KISS_HEADER_REQUEST_PARAM) || out_len < 2 )
     {
         return KISS_ERR_INVALID_FRAME;
     }

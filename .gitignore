@@ -4,6 +4,8 @@
 # no main file used for testing
 main.exe
 main.c
+main_obc.c
+main_eps.c
 
 # no obj files
 *.o
