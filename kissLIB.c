@@ -1631,16 +1631,16 @@ int32_t kiss_request_param(kiss_instance_t *const kiss, uint16_t ID, uint8_t *co
  * -------------------
  * @returns any number of errors or KISS_OK(0) if everything went ok
  */
-int32_t kiss_send_command(kiss_instance_t *const kiss, uint16_t *command)
+int32_t kiss_send_command(kiss_instance_t *const kiss, uint16_t command)
 {
     /* checking if parameters are ok */
-    if(NULL == kiss || NULL == command)
+    if(NULL == kiss)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
 
     /* create a byte array from the 2 bytes command */
-    uint8_t cmd_b[2] = {(uint8_t) (*command), (uint8_t) ((*command) >> 8)};
+    uint8_t cmd_b[2] = {(uint8_t) (command), (uint8_t) ((command) >> 8)};
 
     /* encode and send the command */
     return kiss_encode_and_send(kiss, cmd_b, 2, KISS_HEADER_COMMAND);

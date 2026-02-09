@@ -21,6 +21,11 @@ extern "C" {
 
 
 
+#define KISS_LSB(x) ( (uint8_t)(x) )
+#define KISS_MSB(x) ( (uint8_t)((x) >> 8) )
+#define KISS_BYTE_TO_UINT16(b0, b1) ( (uint16_t)(b0) | ((uint16_t)(b1) << 8) )  
+
+
 /** KISS protocol special byte values
  *
  * KISS frames are delimited by the FEND byte. If the payload contains
@@ -567,7 +572,7 @@ int32_t kiss_request_param_crc32(kiss_instance_t *const kiss, uint16_t ID, uint8
  * ----------
  * @returns: Any number of errors or KISS_OK(0) if everything went ok
  */
-int32_t kiss_send_command(kiss_instance_t *const kiss, uint16_t *command);
+int32_t kiss_send_command(kiss_instance_t *const kiss, uint16_t command);
 
 
 /**

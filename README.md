@@ -488,7 +488,7 @@ if(KISS_OK == kiss_obc_err)
                 {
                     case VBAT_mV:
                         /* the HEADER_DATA in port 0 is used to respond to request of parameters */
-                        kiss_obc_err = kiss_encode_and_send(&kiss_obc_i, (uint8_t*)&TEL_VBAT_mV, 2, KISS_HEADER_DATA(0));
+                        kiss_obc_err = kiss_encode_and_send(&kiss_obc_i, (uint8_t*)&TEL_VBAT_mV, 2, KISS_HEADER_REQUEST_PARAM);
                         if(kiss_obc_err != KISS_OK)
                         {
                             /* error handling */
