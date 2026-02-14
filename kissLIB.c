@@ -132,23 +132,6 @@ static const uint32_t kiss_CRC32_Table[256] = {
 
 
 
-/**
- * kiss_init
- * ----------
- * Initialize a `kiss_instance_t` with the provided buffer and callbacks.
- * ----------
- * Parameters:
- *  - kiss: Pointer to the instance to initialize. Must not be NULL.
- *  - buffer: Caller-supplied working buffer used for encoding/decoding.
- *  - buffer_size: Size of `buffer` in bytes (must be > 0).
- *  - write: Transport write callback used by `kiss_send_frame`.
- *  - read: Transport read callback used by `kiss_receive_frame`.
- * ----------
- * Returns:
- *  - KISS_OK(0) on success
- *  - KISS_ERR_INVALID_PARAMS(1) if inputs are invalid
- *  - KISS_ERR_PADDING_OVERFLOW(10) if the padding input is greater than 32
- */
 int32_t kiss_init(kiss_instance_t *const kiss, uint8_t *const buffer, size_t buffer_size, uint8_t tx_delay, kiss_write_fn write, kiss_read_fn read, void *const context, uint8_t padding)
 {
     if (NULL == kiss || 0 == buffer_size || NULL == buffer)
@@ -179,27 +162,7 @@ int32_t kiss_init(kiss_instance_t *const kiss, uint8_t *const buffer, size_t buf
 }
 
 
-/**
- * kiss_encode
- * -----------
- * Encode application payload into a KISS frame stored in `kiss->buffer`.
- * The encoded format is:
- *   FEND | header(1 byte) | escaped payload | FEND
- *
- * Escaping rules (per this implementation):
- *   - FEND -> FESC TFEND
- *   - FESC -> FESC TFESC
- * ----------
- * Parameters:
- *  - kiss: initialized instance
- *  - data: pointer to payload bytes
- *  - length: payload length in bytes
- * ----------
- * Returns:
- *  - KISS_OK(0) on success
- *  - KISS_ERR_INVALID_PARAMS(1) for bad inputs
- *  - KISS_ERR_BUFFER_OVERFLOW(3) if the provided working buffer is too small
- */
+
 int32_t kiss_encode(kiss_instance_t *const kiss, const uint8_t *const data, size_t length, uint8_t header)
 {
     /* check for parameters error or size of the buffer too small for the payload */
@@ -305,23 +268,7 @@ int32_t kiss_encode(kiss_instance_t *const kiss, const uint8_t *const data, size
 
 
 
-/**
- * kiss_push_encode
- * ------------------
- * push more data inside an already encoded payload
- * ----------
- * Parameters:
- * - kiss: kiss instance
- * - data: data to add at the end of the payload 
- * - length: size of the data to add, if all are added the value is not changed.
- * ----------
- * Returns:
- * - KISS_OK(0) if everything is ok
- * - KISS_ERR_INVALID_PARAMS(1) one of the parameter passed is NULL or not valid (e.g. the kiss status is not in transmitting mode)
- * - KISS_ERR_STATUS(9) the kiss instance is in error state, clear it before using this function
- * - KISS_ERR_INVALID_FRAME(2) the kiss buffer doesn't have a KISS_FEND at kiss index
- * - KISS_ERR_BUFFER_OVERFLOW(3) the kiss buffer is too small
- */
+
 int32_t kiss_push_encode(kiss_instance_t *const kiss, const uint8_t *const data, size_t length)
 {
     /* control that parameters are good */
@@ -408,26 +355,7 @@ int32_t kiss_push_encode(kiss_instance_t *const kiss, const uint8_t *const data,
 }
 
 
-/**
- * kiss_decode
- * -----------
- * Decode an encoded frame that is present in `kiss->buffer`.
- * The caller must set `kiss->index` to the number of bytes in the buffer
- * that belong to the encoded frame prior to calling this function.
- * ----------
- * Parameters:
- *  - kiss: instance containing encoded frame data
- *  - output: buffer to receive decoded payload
- *  - output_length: pointer to variable that will receive decoded length
- *  - header: optional pointer to receive the KISS header byte (may be NULL)
- * ----------
- * Returns:
- *  - KISS_OK(0) on success
- *  - KISS_ERR_INVALID_PARAMS(1) for bad pointers
- *  - KISS_ERR_INVALID_FRAME(2) for malformed frames or bad escape sequences
- *  - KISS_ERR_STATUS(9) the kiss instance is in error status, clear it before using this function
- *  - KISS_ERR_BUFFER_OVERFLOW(3) the output size is too small for the frame received
- */
+
 int32_t kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t output_max_size, size_t *const output_length, uint8_t *const header)
 {
     /* check basic parameters */
@@ -558,21 +486,6 @@ int32_t kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t o
 }
 
 
-/**
- * kiss_send_frame
- * ---------------
- * send the frame that has been previously encoded in the kiss_instance
- * ----------
- * Parameters:
- * - kiss: kiss instance which contains the frame to send
- * ----------
- * Returns:
- * - KISS_OK(0) if everything is ok
- * - KISS_ERR_INVALID_PARAMS(1) if the kiss instance is NULL
- * - KISS_ERR_CALLBACK_MISSING(7) the write function callback is missing in the kiss instance
- * - KISS_ERR_DATA_NOT_ENCODED(5) trying to send a frame without any data on it
- * - KISS_ERR_PADDING_OVERFLOW(10) paddding number is greater than 32
- */
 
 int32_t kiss_send_frame(kiss_instance_t *const kiss)
 {
@@ -636,26 +549,7 @@ int32_t kiss_send_frame(kiss_instance_t *const kiss)
     return err;
 }
 
-/**
- * kiss_encode_and_send
- * ----------------------
- * Encode `length` bytes from `data` into the instance working buffer and send it.
- * * Behavior:
- *  - Calls kiss_encode to encode the data into kiss->buffer.
- * - Calls kiss_send_frame to send the encoded frame.
- * ----------
- * Parameters:
- * - kiss: initialized instance.
- * - data: payload to encode.
- * - length: payload length in bytes.
- * - header: KISS header byte to use.
- * ----------
- * Returns: 
- * - KISS_OK(0) on success
- * - KISS_ERR_INVALID_PARAMS(1) for bad inputs
- * - KISS_ERR_BUFFER_OVERFLOW(3) if the provided working buffer is too small
- * - generic error code from kiss_send_frame on failure
- */
+
 int32_t kiss_encode_and_send(kiss_instance_t *const kiss, const uint8_t *const data, size_t length, uint8_t header)
 {
     /* error container */
@@ -671,24 +565,7 @@ int32_t kiss_encode_and_send(kiss_instance_t *const kiss, const uint8_t *const d
     return kiss_send_frame(kiss);
 }
 
-/**
- * kiss_receive_frame
- * ------------------
- * Read bytes from the transport until a terminating FEND is received and
- * decode into `output`.
- * ----------
- * Notes:
- *  - This routine calls the user `read` callback repeatedly with length=1.
- *  - `read` must provide data reliably (blocking or buffering as needed).
- * ----------
- * Returns:
- *  - KISS_OK(0) on success
- *  - KISS_ERR_INVALID_PARAMS(1) for bad inputs
- *  - KISS_ERR_INVALID_FRAME(2) for bad escape sequences
- *  - KISS_ERR_BUFFER_OVERFLOW(3) if decoded data exceeds `kiss->buffer_size`
- *  - KISS_ERR_CALLBACK_MISSING(7) if there is no read function in the kiss instance
- *  - any other error
- */
+
 int32_t kiss_receive_frame(kiss_instance_t *const kiss, uint32_t maxAttempts)
 {
     /* check if parameters are ok */
@@ -795,26 +672,7 @@ int32_t kiss_receive_frame(kiss_instance_t *const kiss, uint32_t maxAttempts)
 
 
 
-/** 
- * kiss_receive_and_decode
- * -----------------------
- * Receive a KISS frame and decode it into `output`.
- * ----------
- * Parameters:
- *  - kiss: instance with working buffer and `read` callback.
- *  - output: buffer to receive decoded payload bytes.
- *  - output_length: pointer to receive number of decoded bytes.
- *  - maxAttempts: maximum number of read attempts before giving up.
- *  - header: optional pointer to receive the KISS header byte (may be NULL).
- * ----------
- * Returns:
- * - KISS_OK(0) on success
- * - KISS_ERR_INVALID_PARAMS(1) for bad inputs
- * - KISS_ERR_INVALID_FRAME(2) for bad escape sequences
- * - KISS_ERR_BUFFER_OVERFLOW(3) if decoded data exceeds `kiss->buffer_size`
- * - KISS_ERR_NO_DATA_RECEIVED(4) if no complete frame is received within maxAttempts
- * - any other error
- */
+
 int32_t kiss_receive_and_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t output_max_size, size_t *const output_length, uint32_t maxAttempts, uint8_t *const header)
 {
     /* check if kiss is null*/
@@ -864,21 +722,7 @@ int32_t kiss_receive_and_decode(kiss_instance_t *const kiss, uint8_t *const outp
 
 
 
-/**
- * kiss_set_TXdelay
- * -----------------
- * Set the TX delay on the KISS device by sending a control frame.
- * The delay is specified in milliseconds (10ms to 2550ms).
- * ----------
- * Parameters:
- * - kiss: initialized instance.
- * - tx_delay: delay in milliseconds (10 to 2550).
- * ----------
- * Returns:
- * - KISS_OK(0) on success
- * - KISS_ERR_INVALID_PARAMS(1) if inputs are invalid
- * - any other error
- */
+
 int32_t kiss_set_TXdelay(kiss_instance_t *const kiss, uint8_t tx_delay)
 {
     if (NULL == kiss || 0 == tx_delay)
@@ -902,21 +746,7 @@ int32_t kiss_set_TXdelay(kiss_instance_t *const kiss, uint8_t tx_delay)
     return kiss_encode_and_send(kiss, &payData, len, KISS_HEADER_TX_DELAY);
 }
 
-/** 
- * kiss_set_speed
- * -----------------   
- * Set the speed on the KISS device by sending a control frame.
- * The speed is specified in bits per second.
- * ----------
- * Parameters:
- * - kiss: initialized instance.
- * - BaudRate: speed in bits per second.
- * ----------
- * Returns:
- * - KISS_OK(0) on success
- * - KISS_ERR_INVALID_PARAMS(1) if inputs are invalid
- * - any other error
- */
+
 int32_t kiss_set_speed(kiss_instance_t *const kiss, uint32_t BaudRate)
 {
     if (NULL == kiss || 0 == BaudRate)
@@ -943,19 +773,7 @@ int32_t kiss_set_speed(kiss_instance_t *const kiss, uint32_t BaudRate)
     return kiss_encode_and_send(kiss, payData, len, KISS_HEADER_SPEED);
 }
 
-/**
- * kiss_send_ack
- * -----------------   
- * Send an ACK control frame.
- * ----------
- * Parameters:
- * - kiss: initialized instance.
- * ----------
- * Returns:
- * - KISS_OK(0) on success
- * - KISS_ERR_INVALID_PARAMS(1) if inputs are invalid
- * - any other error
- */
+
 int32_t kiss_send_ack(kiss_instance_t *const kiss)
 {
     if (NULL == kiss)
@@ -975,19 +793,7 @@ int32_t kiss_send_ack(kiss_instance_t *const kiss)
 }
 
 
-/**
- * kiss_send_nack
- * -----------------   
- * Send a NACK control frame.
- * ----------
- * Parameters:
- * - kiss: initialized instance.
- * ----------
- * Returns:
- * - KISS_OK(0) on success
- * - KISS_ERR_INVALID_PARAMS(1) if inputs are invalid
- * - any other error
- */
+
 int32_t kiss_send_nack(kiss_instance_t *const kiss)
 {
     if(NULL == kiss)
@@ -1007,19 +813,7 @@ int32_t kiss_send_nack(kiss_instance_t *const kiss)
 }
 
 
-/** 
- * kiss_send_ping
- * -----------------
- * Send a PING control frame.
- * ----------
- * Parameters:
- * - kiss: initialized instance.
- * ----------
- * Returns:
- * - KISS_OK(0) on success
- * - KISS_ERR_INVALID_PARAMS(1) if inputs are invalid
- * - any other error
- */
+
 int32_t kiss_send_ping(kiss_instance_t *const kiss)
 {
     if(NULL == kiss)
@@ -1042,23 +836,7 @@ int32_t kiss_send_ping(kiss_instance_t *const kiss)
 
 
 
-/*
-* kiss_set_param
-* -------------------
-* Send a parameter to the other device with specific header (not 0)
-* --------
-* Parameters:
-* - kiss: initialized instance
-* - ID: 2 bytes for the ID of the param
-* - param: byte array witht the parameter to send
-* - len: number of bytes to send
-* - header: header to set. 00 is a generic data packet, you can implement a specific header like 0x05 (which means it contains a parameter)
-* -------
-* Returns:
-* - KISS_OK(0) on success
-* - KISS_ERR_INVALID_PARAMS(1) if inputs are invalid
-* - any other error
-*/
+
 int32_t kiss_set_param(kiss_instance_t *const kiss, uint16_t ID, const uint8_t *const param, size_t len)
 {
     /* check if kiss instance is null or parameter pointer is null */
@@ -1103,21 +881,7 @@ int32_t kiss_set_param(kiss_instance_t *const kiss, uint16_t ID, const uint8_t *
 
 
 
-/*
-* kiss_set_param_crc32
-* -------------------
-* Send a parameter to the other device with specific header (not 0) with CRC32
-* Parameters:
-* - kiss: initialized instance
-* - ID: 2 bytes for the ID of the param
-* - param: byte array witht the parameter to send
-* - len: number of bytes to send
-* - header: header to set. 00 is a generic data packet, you can implement a specific header like 0x05 (which means it contains a parameter)
-* Returns:
-* - KISS_OK(0) on success
-* - KISS_ERR_INVALID_PARAMS(1) if inputs are invalid
-* - any other error
-*/
+
 int32_t kiss_set_param_crc32(kiss_instance_t *const kiss, uint16_t ID, const uint8_t *const param, size_t len)
 {
     /* check basic errors */
@@ -1189,18 +953,7 @@ int32_t kiss_set_param_crc32(kiss_instance_t *const kiss, uint16_t ID, const uin
 
 
 
-/** 
- * kiss_crc32
- * -----------------------
- * Compute the CRC32 checksum for the given data.
- * ----------
- * Parameters:
- *  - data: pointer to input data
- *  - len: length of input data in bytes
- * ----------
- * Returns:
- *  - CRC32 checksum
- */
+
 #ifdef ARDUINO
 
 /* defines the CRC32 for arduino */
@@ -1265,17 +1018,7 @@ uint32_t kiss_crc32_push(kiss_instance_t *const kiss, uint32_t prev_crc, const u
 
 #else
 
-/* kiss_crc32
-* --------------------------
-* this function create the CRC32 from a data block in "data" with length "len" 
-* ---------------
-* Parameters:
-* - data: data block 
-* - len: length of the data block
-* ---------------
-* Returns: 
-* - the CRC calculated
-*/
+
 uint32_t kiss_crc32(kiss_instance_t *const kiss, const uint8_t *const data, size_t len)
 {
     if(NULL == kiss)
@@ -1299,19 +1042,7 @@ uint32_t kiss_crc32(kiss_instance_t *const kiss, const uint8_t *const data, size
     return ~crc;
 }
 
-/* kiss_crc32_push
-* --------------------------
-* this function create the CRC32 from a data block in "data" with length "len" and a previously CRC32 already calculated in kiss_crc32.,
-* you can also use this function for the first CRC calculation but the "prev_crc" should be 0.
-* ---------------
-* Parameters:
-* - prev_crc: previously calculated CRC32
-* - data: new data block 
-* - len: new length of the data block
-* ---------------
-* Returns: 
-* - the CRC calculated taking into account prev_crc
-*/
+
 uint32_t kiss_crc32_push(kiss_instance_t *const kiss, uint32_t prev_crc, const uint8_t *const data, size_t len)
 {
     if(NULL == kiss)
@@ -1349,19 +1080,6 @@ uint32_t kiss_crc32_push(kiss_instance_t *const kiss, uint32_t prev_crc, const u
 
 
 
-/**
- * kiss_verify_crc32
- * -----------------------
- * Verify the CRC32 checksum for the given data.
- * ------------
- * Parameters:
- *  - data: pointer to input data
- *  - len: length of input data in bytes
- *  - expected_crc: expected CRC32 checksum
- * ------------
- * Returns:
- *  - 1 if checksum matches, 0 otherwise
- */
 int32_t kiss_verify_crc32(kiss_instance_t *const kiss, const uint8_t *const data, size_t len, uint32_t expected_crc)
 {
     return (expected_crc == kiss_crc32(kiss, data, len)) ? KISS_OK : 1;
@@ -1370,22 +1088,7 @@ int32_t kiss_verify_crc32(kiss_instance_t *const kiss, const uint8_t *const data
 
 
 
-/*
-* kiss_encode_crc32
-* ------------
-* It encode the data and adds the CRC32 of the data (not encoded) at the end of the payload
-* ------------
-* Parameters:
-* - kiss: kiss instance
-* - data: data payload to encode
-* - length: length of the data payload
-* - header: header to add to the frame
-* ------------
-* Returns:
-* - KISS_OK(0) if everything went ok
-* - KISS_ERR_INVALID_PARAMS(1) if invalid parameters are passed to the function
-* - any other error
-*/
+
 int32_t kiss_encode_crc32(kiss_instance_t *const kiss, const uint8_t *const data, size_t length, uint8_t header)
 {
     // Check for null pointers or invalid input length
@@ -1433,27 +1136,7 @@ int32_t kiss_encode_crc32(kiss_instance_t *const kiss, const uint8_t *const data
 
 
 
-/*
-* kiss_decode_crc32
-* ------------
-* This function decodes the received frame and calculate the CRC32 and check it if is ok
-* ------------
-* Parameters:
-* - kiss: kiss intance
-* - output: the output data is written here
-* - max_out_size: maximum length of the output array
-* - output_length: total length of the output data
-* - header: header output
-* ------------
-* Returns:
-* - KISS_OK(0) everything ok
-* - KISS_INVALID_PARAMS(1) invalid parameters passed to the function
-* - KISS_ERR_NO_DATA_RECEIVED(4) no data has been received so no decoding is possible
-* - KISS_INVALID_FRAME(2) invalid frame has been received so no decoding is possible
-* - KISS_ERR_BUFFER_OVERFLOW(3) buffer overflow of the "output" array
-* - KISS_ERR_CRC32_MISMATCH(6) CRC32 mismatch so do not use this frame is corrupted
-* - any other error
-*/
+
 int32_t kiss_decode_crc32(kiss_instance_t *const kiss, uint8_t *const output, size_t max_out_size, size_t *const output_length, uint8_t *const header)
 {
     if (NULL == kiss || NULL == output || NULL == output_length)
@@ -1520,21 +1203,7 @@ int32_t kiss_decode_crc32(kiss_instance_t *const kiss, uint8_t *const output, si
 
 
 
-/**
- * kiss_encode_send_crc32
- * -------------------------
- * Encode the data, put CRC32 at the end of the frame and then send it
- * -----------
- * Parameters:
- * - kiss: initialization instance
- * - data: data payload array to encapsulate, encode and send
- * - length: length of the payload array to send, the length is changed with the real bytes that have been sent
- * - header: header byte
- * -----------
- * Returns:
- * - KISS_OK(0) everything is ok
- * - any other error
- */
+
 int32_t kiss_encode_send_crc32(kiss_instance_t *const kiss, const uint8_t *const data, size_t length, uint8_t header)
 {
     int32_t err = kiss_encode_crc32(kiss, data, length, header);
@@ -1548,21 +1217,7 @@ int32_t kiss_encode_send_crc32(kiss_instance_t *const kiss, const uint8_t *const
 
 
 
-/**
- * kiss_request_param
- * -------------------
- * @brief Send a parameter request to the other device and wait for the response.
- * ----------
- * @param kiss: initialized instance
- * @param ID: 2 bytes for the ID of the param to request
- * @param output: buffer to receive the parameter value
- * @param max_out_size: maximum size of the output buffer
- * @param output_length: pointer to receive the actual length of the output data
- * @param maxAttempts: maximum number of attempts to wait for the response
- * @param expected_header: expected header byte in the response (if 0, any header is accepted)
- * ----------
- * @returns: Any number of errors or KISS_OK(0) if everything went ok
- */
+
 int32_t kiss_request_param(kiss_instance_t *const kiss, uint16_t ID)
 {
     if(NULL == kiss)
@@ -1603,16 +1258,7 @@ int32_t kiss_request_param(kiss_instance_t *const kiss, uint16_t ID)
 
 
 
-/**
- * kiss_send_command
- * -------------------
- * @brief Send a command to the other device. The command is a 2 bytes value.
- * -------------------
- * @param kiss: initialized instance
- * @param command: pointer to the 2 bytes command to send
- * -------------------
- * @returns any number of errors or KISS_OK(0) if everything went ok
- */
+
 int32_t kiss_send_command(kiss_instance_t *const kiss, uint16_t command)
 {
     /* checking if parameters are ok */
@@ -1628,16 +1274,7 @@ int32_t kiss_send_command(kiss_instance_t *const kiss, uint16_t command)
     return kiss_encode_and_send(kiss, cmd_b, 2, KISS_HEADER_COMMAND);
 }
 
-/**
- * kiss_send_command_crc32
- * -------------------
- * @brief Send a command to the other device with CRC32. The command is a 2 bytes value.
- * -------------------
- * @param kiss: initialized instance
- * @param command: pointer to the 2 bytes command to send
- * -------------------
- * @returns any number of errors or KISS_OK(0) if everything went ok
- */
+
 int32_t kiss_send_command_crc32(kiss_instance_t *const kiss, uint16_t *command)
 {
     if(NULL == kiss || NULL == command)
@@ -1655,22 +1292,7 @@ int32_t kiss_send_command_crc32(kiss_instance_t *const kiss, uint16_t *command)
 
 
 
-/**
- * kiss_request_param_crc32
- * -------------------
- * @brief Send a parameter request to the other device with CRC32 and wait for the response with CRC32 verification.
- * ----------
- * @param kiss: initialized instance
- * @param ID: 2 bytes for the ID of the param to request
- * @param header: header byte to use for the request
- * @param output: buffer to receive the parameter value
- * @param max_out_size: maximum size of the output buffer
- * @param output_length: pointer to receive the actual length of the output data
- * @param maxAttempts: maximum number of attempts to wait for the response
- * @param expected_header: expected header byte in the response (if 0, any header is accepted)
- * ----------
- * @returns: Any number of errors or KISS_OK(0) if everything went ok
- */
+
 int32_t kiss_request_param_crc32(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const output, size_t max_out_size, size_t *const output_length, uint32_t maxAttempts, uint8_t expected_header)
 {
     if(NULL == kiss || NULL == output || NULL == output_length)
@@ -1735,19 +1357,7 @@ int32_t kiss_request_param_crc32(kiss_instance_t *const kiss, uint16_t ID, uint8
 
 
 
-/**
- * kiss_extract_param
- * -----------------------
- * @brief If the header of the fram is a set parameter header, this function extracts the parameter ID and value from the frame.
- * ----------
- * @param kiss: instance containing encoded frame data
- * @param ID: pointer to variable that will receive the parameter ID (2 bytes)  
- * @param param: buffer to receive the parameter value
- * @param max_param_size: maximum size of the param buffer
- * @param param_length: pointer to variable that will receive the actual length of the parameter value
- * ----------
- * @returns: Any number of errors or KISS_OK(0) if everything went ok
- */
+
 int32_t kiss_extract_param(kiss_instance_t *const kiss, uint16_t *const ID, uint8_t *const param, size_t max_param_size, size_t *const param_length)
 {
     if(NULL == kiss || NULL == ID)
