@@ -526,19 +526,14 @@ int32_t kiss_set_param_crc32(kiss_instance_t *const kiss, uint16_t ID, const uin
 /**
  * kiss_request_param
  * -------------------
- * @brief Send a parameter request to the other device and wait for the response.
+ * @brief Send a parameter request to the other device requesting for a parameter.
  * ----------
  * @param kiss: initialized instance
  * @param ID: 2 bytes for the ID of the param to request
- * @param output: buffer to receive the parameter value
- * @param max_out_size: maximum size of the output buffer
- * @param output_length: pointer to receive the actual length of the output data
- * @param maxAttempts: maximum number of attempts to wait for the response
- * @param expected_header: expected header byte in the response frame
  * ----------
  * @returns: Any number of errors or KISS_OK(0) if everything went ok
  */
-int32_t kiss_request_param(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const output, size_t max_out_size, size_t *const output_length, uint32_t maxAttempts, uint8_t expected_header);
+int32_t kiss_request_param(kiss_instance_t *const kiss, uint16_t ID);
 
 
 

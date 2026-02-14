@@ -1548,7 +1548,6 @@ int32_t kiss_encode_send_crc32(kiss_instance_t *const kiss, const uint8_t *const
 
 
 
-
 /**
  * kiss_request_param
  * -------------------
@@ -1564,9 +1563,9 @@ int32_t kiss_encode_send_crc32(kiss_instance_t *const kiss, const uint8_t *const
  * ----------
  * @returns: Any number of errors or KISS_OK(0) if everything went ok
  */
-int32_t kiss_request_param(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const output, size_t max_out_size, size_t *const output_length, uint32_t maxAttempts, uint8_t expected_header)
+int32_t kiss_request_param(kiss_instance_t *const kiss, uint16_t ID)
 {
-    if(NULL == kiss || NULL == output || NULL == output_length)
+    if(NULL == kiss)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
@@ -1595,25 +1594,8 @@ int32_t kiss_request_param(kiss_instance_t *const kiss, uint16_t ID, uint8_t *co
     kiss->Status = KISS_STATUS_TRANSMITTING;
 
     /* send the frame and return the result */
-    err = kiss_send_frame(kiss);    
-    if(err != KISS_OK)
-    {
-        return err;
-    }
-    uint8_t header;
+    return kiss_send_frame(kiss);    
 
-    // wait for the response and decode it
-    err = kiss_receive_and_decode(kiss, output, max_out_size, output_length, maxAttempts, &header);
-    if(err != KISS_OK)
-    {
-        return err;
-    }
-    if(header != expected_header)
-    {
-        return KISS_ERR_INVALID_FRAME;
-    }
-
-    return err;
 }
 
 
