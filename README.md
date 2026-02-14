@@ -443,8 +443,22 @@ The implementation from the OBC that requests the battery voltage to the EPS is 
 ```C
 uint8_t bs[2];
 size_t out_len;
+uint8_t header;
 /* it requests the battery voltage which is a uint16_t and contains the battery voltage in mV */
-kiss_eps_err = kiss_request_param(&kiss_eps_i, EPS_PARAM_BP_mV, bs, 2, &out_len, KISS_HEADER_DATA(0));
+kiss_eps_err = kiss_request_param(&kiss_eps_i, EPS_PARAM_BP_mV);
+if(kiss_eps_err != KISS_OK)
+{
+    /* handling error */
+}
+else
+{
+    kiss_eps_err = kiss_receive_and_decode(&kiss_eps_i, output, sizeof(output), &out_len, 1, &header);
+    if(kiss_eps_err != KISS_OK)
+    {
+        /* handling error */
+    }
+}
+/* now kiss_eps_err should be ok */
 if(KISS_OK == kiss_eps_err)
 {
     if(out_len == 2)
