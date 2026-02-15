@@ -24,6 +24,7 @@ extern "C" {
 #define KISS_LSB(x) ( (uint8_t)(x) )
 #define KISS_MSB(x) ( (uint8_t)((x) >> 8) )
 #define KISS_BYTE_TO_UINT16(b0, b1) ( (uint16_t)(b0) | ((uint16_t)(b1) << 8) )  
+#define KISS_BYTE_TO_UINT32(b0, b1, b2, b3) ( (uint32_t)(b0) | ((uint32_t)(b1) << 8) | ((uint32_t)(b2) << 16) | ((uint32_t)(b3) << 24))
 
 
 /** KISS protocol special byte values
@@ -380,7 +381,6 @@ int32_t kiss_send_ping(kiss_instance_t *const kiss);
 * @param ID 2 bytes for the ID of the param
 * @param param byte array witht the parameter to send
 * @param len number of bytes to send
-* @param header header to set. 00 is a generic data packet, you can implement a specific header like 0x05 (which means it contains a parameter)
 * @return Any number of errors or KISS_OK(0) if everything went ok
 */
 int32_t kiss_set_param(kiss_instance_t *const kiss, uint16_t ID, const uint8_t *const param, size_t len);

@@ -1360,7 +1360,7 @@ int32_t kiss_request_param_crc32(kiss_instance_t *const kiss, uint16_t ID, uint8
 
 int32_t kiss_extract_param(kiss_instance_t *const kiss, uint16_t *const ID, uint8_t *const param, size_t max_param_size, size_t *const param_length)
 {
-    if(NULL == kiss || NULL == ID)
+    if(NULL == kiss)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
@@ -1384,16 +1384,23 @@ int32_t kiss_extract_param(kiss_instance_t *const kiss, uint16_t *const ID, uint
         return KISS_ERR_INVALID_FRAME;
     }
 
-
-    /* extract ID from the decoded data */
-    *ID = (uint16_t)(out[0]) | ((uint16_t)(out[1]) << 8);
+    if(ID != NULL)
+    {
+        /* extract ID from the decoded data */
+        *ID = (uint16_t)(out[0]) | ((uint16_t)(out[1]) << 8);
+    }
 
     if(NULL != param && NULL != param_length && max_param_size > 0)
     {
 
         /* extract parameter value */
         size_t index = 0;
-        for(size_t i = 2; i < out_len && index < max_param_size; i++)
+        size_t start = 0;
+        if(ID != NULL)
+        {
+            start = 2;
+        }
+        for(size_t i = start; i < out_len && index < max_param_size; i++)
         {
             param[index++] = out[i];
         }
