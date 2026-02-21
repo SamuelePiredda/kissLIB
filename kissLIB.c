@@ -131,6 +131,74 @@ static const uint32_t kiss_CRC32_Table[256] = {
 #endif
 
 
+#ifdef ARDUINO
+
+/*
+* you calculated the CRC32 for a first block of data
+* now you want to add another block of data with the new CRC32 which takes into account the previous one
+*/
+uint32_t kiss_crc32_push(kiss_instance_t *const kiss, uint32_t prev_crc, const uint8_t *data, size_t len)
+{
+    if(NULL == kiss)
+    {
+        return KISS_ERR_INVALID_PARAMS;
+    }
+
+   
+    uint32_t crc;
+
+    if(0 == prev_crc)
+    {
+        crc = prev_crc ^ 0xFFFFFFFF;
+    }
+    else
+    {
+        crc = prev_crc;
+    }
+
+    for (size_t i = 0; i < len; i++) 
+    {
+        uint8_t lookupIndex = (uint8_t)(crc ^ data[i]); 
+        uint32_t table_value = pgm_read_dword(&kiss_CRC32_Table[lookupIndex]);
+        crc = (crc >> 8) ^ table_value;
+    }
+    return crc;
+}
+
+#else
+
+
+
+static uint32_t kiss_crc32_push(kiss_instance_t *const kiss, uint32_t prev_crc, const uint8_t *const data, size_t len)
+{
+    if(NULL == kiss)
+    {
+        return KISS_ERR_INVALID_PARAMS;
+    }
+
+    uint32_t crc;
+
+    if(0 == prev_crc)
+    {
+        crc = prev_crc ^ 0xFFFFFFFF;
+    }
+    else
+    {
+        crc = prev_crc;
+    }
+
+    for (size_t i = 0; i < len; i++) 
+    {
+        uint8_t byte = data[i];
+        uint32_t lookupIndex = (crc ^ byte) & 0xFF;
+        crc = (crc >> 8) ^ kiss_CRC32_Table[lookupIndex];
+    }
+    return crc;
+}
+
+#endif
+
+
 
 int32_t kiss_init(kiss_instance_t *const kiss, uint8_t *const buffer, size_t buffer_size, uint8_t tx_delay, kiss_write_fn write, kiss_read_fn read, void *const context, uint8_t padding, uint8_t crc32)
 {
@@ -651,6 +719,24 @@ int32_t kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t o
             return KISS_ERR_CRC32_MISMATCH;
         }
     }   
+
+    if(KISS_HEADER_ACK == *header)
+    {
+        kiss->frame_flag = KISS_FLAG_ACK;
+    }
+    else if(KISS_HEADER_NACK == *header)
+    {
+        kiss->frame_flag = KISS_FLAG_NACK;
+    }
+    else if(KISS_HEADER_PING == *header)
+    {    
+        kiss->frame_flag = KISS_FLAG_PING;
+    }
+    else
+    {
+        kiss->frame_flag = KISS_FLAG_NONE;
+    }
+
     return KISS_OK;
 }
 
@@ -830,6 +916,7 @@ int32_t kiss_receive_frame(kiss_instance_t *const kiss, uint32_t maxAttempts)
                         }
 
                         kiss->Status = KISS_STATUS_RECEIVED;
+                        kiss->frame_flag = KISS_FLAG_NONE;
                         return KISS_OK;
                     } 
                 }    
@@ -1059,72 +1146,7 @@ int32_t kiss_set_param(kiss_instance_t *const kiss, uint16_t ID, const uint8_t *
 
 
 
-#ifdef ARDUINO
 
-/*
-* you calculated the CRC32 for a first block of data
-* now you want to add another block of data with the new CRC32 which takes into account the previous one
-*/
-uint32_t kiss_crc32_push(kiss_instance_t *const kiss, uint32_t prev_crc, const uint8_t *data, size_t len)
-{
-    if(NULL == kiss)
-    {
-        return KISS_ERR_INVALID_PARAMS;
-    }
-
-   
-    uint32_t crc;
-
-    if(0 == prev_crc)
-    {
-        crc = prev_crc ^ 0xFFFFFFFF;
-    }
-    else
-    {
-        crc = prev_crc;
-    }
-
-    for (size_t i = 0; i < len; i++) 
-    {
-        uint8_t lookupIndex = (uint8_t)(crc ^ data[i]); 
-        uint32_t table_value = pgm_read_dword(&kiss_CRC32_Table[lookupIndex]);
-        crc = (crc >> 8) ^ table_value;
-    }
-    return crc;
-}
-
-#else
-
-
-
-static uint32_t kiss_crc32_push(kiss_instance_t *const kiss, uint32_t prev_crc, const uint8_t *const data, size_t len)
-{
-    if(NULL == kiss)
-    {
-        return KISS_ERR_INVALID_PARAMS;
-    }
-
-    uint32_t crc;
-
-    if(0 == prev_crc)
-    {
-        crc = prev_crc ^ 0xFFFFFFFF;
-    }
-    else
-    {
-        crc = prev_crc;
-    }
-
-    for (size_t i = 0; i < len; i++) 
-    {
-        uint8_t byte = data[i];
-        uint32_t lookupIndex = (crc ^ byte) & 0xFF;
-        crc = (crc >> 8) ^ kiss_CRC32_Table[lookupIndex];
-    }
-    return crc;
-}
-
-#endif
 
 
 

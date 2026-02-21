@@ -111,6 +111,13 @@ extern "C" {
 
 
 
+#define KISS_FLAG_NONE 0x00
+#define KISS_FLAG_ACK 0x01
+#define KISS_FLAG_NACK 0x02
+#define KISS_FLAG_PING 0x03
+
+
+
 
 #define KISS_MAX_PADDING 32
 
@@ -160,22 +167,10 @@ struct kiss_instance_t
     void *context; /**< context used in the write/read functions (for instance: context for UART, I2C, SPI, etc..) */
     uint8_t padding; /**< padding number is the number of FEND bytes to write before actually starting sending the frame. Typically used for synch */
     uint8_t CRC32; /**< flag for using crc32 or not. If you want to use CRC32 put it to 1, 0 otherwise */
+    uint8_t frame_flag;
 };
 
 
-
-
-
-
-/**
-* @brief Compute CRC32 from a previous crc32 computed, it will returned the crc32 without final XOR so you must compute the XOR in the return.
-* @param kiss kiss instance
-* @param prev_crc previously calculated CRC32 (no final XOR)
-* @param data more data to compute CRC32
-* @param len length of the data
-* @returns returns the CRC32 calculated
-*/
-static uint32_t kiss_crc32_push(kiss_instance_t *const kiss, uint32_t prev_crc, const uint8_t *const data, size_t len);
 
 
 
