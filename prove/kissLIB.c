@@ -333,6 +333,7 @@ int32_t kiss_encode(kiss_instance_t *const kiss, const uint8_t *const data, size
 
 
 
+#include<stdio.h>
 int32_t kiss_push_encode(kiss_instance_t *const kiss, const uint8_t *const data, size_t length)
 {
     
@@ -887,6 +888,11 @@ int32_t kiss_receive_and_decode(kiss_instance_t *const kiss, uint8_t *const outp
 
 
 
+
+
+
+
+
 int32_t kiss_set_TXdelay(kiss_instance_t *const kiss, uint8_t tx_delay)
 {
     if (NULL == kiss || 0 == tx_delay)
@@ -1061,6 +1067,29 @@ int32_t kiss_set_param(kiss_instance_t *const kiss, uint16_t ID, const uint8_t *
 
 #ifdef ARDUINO
 
+/* defines the CRC32 for arduino */
+uint32_t kiss_crc32(kiss_instance_t *const kiss, const uint8_t *data, size_t len)
+{
+    if(NULL == kiss)
+    {
+        return KISS_ERR_INVALID_PARAMS;
+    }
+
+    if(NULL == data)
+    {
+        kiss->Status = KISS_STATUS_ERROR_STATE;
+        return KISS_ERR_INVALID_PARAMS;
+    }
+    uint32_t crc = 0xFFFFFFFF;
+    for (size_t i = 0; i < len; i++) 
+    {
+        uint8_t lookupIndex = (uint8_t)(crc ^ data[i]); 
+        uint32_t table_value = pgm_read_dword(&kiss_CRC32_Table[lookupIndex]);
+        crc = (crc >> 8) ^ table_value;
+    }
+    return ~crc;
+}
+
 /*
 * you calculated the CRC32 for a first block of data
 * now you want to add another block of data with the new CRC32 which takes into account the previous one
@@ -1072,7 +1101,12 @@ uint32_t kiss_crc32_push(kiss_instance_t *const kiss, uint32_t prev_crc, const u
         return KISS_ERR_INVALID_PARAMS;
     }
 
-   
+    if(NULL == data)
+    {
+        kiss->Status = KISS_STATUS_ERROR_STATE;
+        return KISS_ERR_INVALID_PARAMS;
+    }
+    
     uint32_t crc;
 
     if(0 == prev_crc)
@@ -1095,6 +1129,29 @@ uint32_t kiss_crc32_push(kiss_instance_t *const kiss, uint32_t prev_crc, const u
 
 #else
 
+
+static uint32_t kiss_crc32(kiss_instance_t *const kiss, const uint8_t *const data, size_t len)
+{
+    if(NULL == kiss)
+    {
+        return KISS_ERR_INVALID_PARAMS;
+    }
+
+    if(NULL == data)
+    {
+        kiss->Status = KISS_STATUS_ERROR_STATE;
+        return KISS_ERR_INVALID_PARAMS;
+    }
+
+    uint32_t crc = 0xFFFFFFFF;
+    for (size_t i = 0; i < len; i++) 
+    {
+        uint8_t byte = data[i];
+        uint32_t lookupIndex = (crc ^ byte) & 0xFF;
+        crc = (crc >> 8) ^ kiss_CRC32_Table[lookupIndex];
+    }
+    return ~crc;
+}
 
 
 static uint32_t kiss_crc32_push(kiss_instance_t *const kiss, uint32_t prev_crc, const uint8_t *const data, size_t len)
@@ -1125,6 +1182,21 @@ static uint32_t kiss_crc32_push(kiss_instance_t *const kiss, uint32_t prev_crc, 
 }
 
 #endif
+
+
+
+static int32_t kiss_verify_crc32(kiss_instance_t *const kiss, const uint8_t *const data, size_t len, uint32_t expected_crc)
+{
+    uint32_t crc = kiss_crc32(kiss, data, len);
+    if(expected_crc == crc)
+    {
+        return KISS_OK;
+    }
+    else
+    {
+        return KISS_ERR_CRC32_MISMATCH;
+    }
+}
 
 
 
@@ -1182,6 +1254,61 @@ int32_t kiss_send_command(kiss_instance_t *const kiss, uint16_t command)
 
 }
 
+
+
+int32_t kiss_extract_param(kiss_instance_t *const kiss, uint16_t *const ID, uint8_t *const param, size_t max_param_size, size_t *const param_length)
+{
+    if(NULL == kiss)
+    {
+        return KISS_ERR_INVALID_PARAMS;
+    }
+    if(kiss->Status != KISS_STATUS_RECEIVED)
+    {
+        return KISS_ERR_NO_DATA_RECEIVED;
+    }
+
+    int32_t err = KISS_OK;
+    uint8_t header;
+    size_t out_len = 0;
+    uint8_t out[256]; // temporary buffer for decoded data, adjust size as needed   
+
+    err = kiss_decode(kiss, out, 256, &out_len, &header);
+    if(err != KISS_OK)
+    {
+        return err;
+    }
+    if(( header != KISS_HEADER_SET_PARAM && header != KISS_HEADER_REQUEST_PARAM) || out_len < 2 )
+    {
+        return KISS_ERR_INVALID_FRAME;
+    }
+
+    if(ID != NULL)
+    {
+        /* extract ID from the decoded data */
+        *ID = (uint16_t)(out[0]) | ((uint16_t)(out[1]) << 8);
+    }
+
+    if(NULL != param && NULL != param_length && max_param_size > 0)
+    {
+
+        /* extract parameter value */
+        size_t index = 0;
+        size_t start = 0;
+        if(ID != NULL)
+        {
+            start = 2;
+        }
+        for(size_t i = start; i < out_len && index < max_param_size; i++)
+        {
+            param[index++] = out[i];
+        }
+
+        *param_length = index;
+
+    }
+
+    return KISS_OK;
+}
 
 
 

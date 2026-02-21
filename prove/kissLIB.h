@@ -167,6 +167,20 @@ struct kiss_instance_t
 
 
 
+
+
+/** 
+
+ * @brief Compute the CRC32 checksum for the given data.
+ *  @param kiss kiss instance
+ *  @param data pointer to input data
+ *  @param len length of input data in bytes
+ * @returns CRC32 checksum
+ */
+static uint32_t kiss_crc32(kiss_instance_t *const kiss, const uint8_t *const data, size_t len);
+
+
+
 /**
 * @brief Compute CRC32 from a previous crc32 computed, it will returned the crc32 without final XOR so you must compute the XOR in the return.
 * @param kiss kiss instance
@@ -176,6 +190,27 @@ struct kiss_instance_t
 * @returns returns the CRC32 calculated
 */
 static uint32_t kiss_crc32_push(kiss_instance_t *const kiss, uint32_t prev_crc, const uint8_t *const data, size_t len);
+
+
+/**
+ * @brief Verify the CRC32 checksum for the given data.
+ * @param kiss kiss instance
+ * @param data data where check is needed   
+ * @param len length of the data
+ * @param expected_crc expected CRC32 of the data
+ *  @retval 1 if checksum matches
+ *  @retval 0 otherwise
+ */
+static int32_t kiss_verify_crc32(kiss_instance_t *const kiss, const uint8_t *const data, size_t len, uint32_t expected_crc);
+
+
+
+
+
+
+
+
+
 
 
 
@@ -385,6 +420,29 @@ int32_t kiss_send_command(kiss_instance_t *const kiss, uint16_t command);
 
 
 
+/**
+ * @brief Encode the data, put CRC32 at the end of the frame and then send it
+ * @param kiss initialization instance
+ * @param data data payload array to encapsulate, encode and send
+ * @param length length of the payload array to send, the length is changed with the real bytes that have been sent
+ * @param header header byte
+ * @return Any number of errors or KISS_OK(0) if everything went ok
+ */
+int32_t kiss_encode_send_crc32(kiss_instance_t *const kiss, const uint8_t *const data, size_t length, uint8_t header);
+
+
+
+
+/**
+ * @brief If the header of the frame is a set parameter header, this function extracts the parameter ID and value from the frame.
+ * @param kiss: instance containing encoded frame data
+ * @param ID: pointer to variable that will receive the parameter ID (2 bytes)  
+ * @param param: buffer to receive the parameter value
+ * @param max_param_size: maximum size of the param buffer
+ * @param param_length: pointer to variable that will receive the actual length of the parameter value
+  * @returns: Any number of errors or KISS_OK(0) if everything went ok
+ */
+int32_t kiss_extract_param(kiss_instance_t *const kiss, uint16_t *const ID, uint8_t *const param, size_t max_param_size, size_t *const param_length);
 
 
 
