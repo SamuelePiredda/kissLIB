@@ -110,15 +110,29 @@ extern "C" {
 
 
 
-
+/**
+ * @brief Kiss flags used to look up if a special frame has arrived
+ */
+/* no special case has arrived */
 #define KISS_FLAG_NONE 0x00
+/* ACK frame arrived */
 #define KISS_FLAG_ACK 0x01
+/* NACK frame arrived */
 #define KISS_FLAG_NACK 0x02
+/* PING frame arrived */
 #define KISS_FLAG_PING 0x03
 
 
+/* define for using CRC32 */
+#define KISS_USE_CRC32 1
+/* define for not using CRC32 */
+#define KISS_NOTUSE_CRC32 0
 
 
+
+
+
+/* maximum padding that can be added */
 #define KISS_MAX_PADDING 32
 
 
@@ -369,17 +383,24 @@ int32_t kiss_request_param(kiss_instance_t *const kiss, uint16_t ID);
 
 /**
  * @brief Send a command to the other device. The command is a 2 bytes value.
- * @param kiss: initialized instance
- * @param command: pointer to the 2 bytes command to send
- * @returns: Any number of errors or KISS_OK(0) if everything went ok
+ * @param kiss initialized instance
+ * @param command pointer to the 2 bytes command to send
+ * @returns Any number of errors or KISS_OK(0) if everything went ok
  */
 int32_t kiss_send_command(kiss_instance_t *const kiss, uint16_t command);
 
 
 
 
-
-
+/**
+ * @brief If your data is larger than a frame this function automatically divide the frame into small chuncks and send them until all the data has been transmitted
+ * @param kiss initialized instance
+ * @param data data array that must be sent
+ * @param length length of the data array
+ * @param header header to use for this communication
+ * @returns: Any number of errors or KISS_OK(0) if everything went ok
+ */
+int32_t kiss_send_large_data(kiss_instance_t *const kiss, const uint8_t *const data, size_t length, uint8_t header);
 
 
 
