@@ -392,18 +392,6 @@ int32_t kiss_send_command(kiss_instance_t *const kiss, uint16_t command);
 
 
 
-/**
- * @brief If your data is larger than a frame this function automatically divide the frame into small chuncks and send them until all the data has been transmitted
- * @param kiss initialized instance
- * @param data data array that must be sent
- * @param length length of the data array
- * @param header header to use for this communication
- * @returns: Any number of errors or KISS_OK(0) if everything went ok
- */
-int32_t kiss_send_large_data(kiss_instance_t *const kiss, const uint8_t *const data, size_t length, uint8_t header);
-
-
-
 
 
 

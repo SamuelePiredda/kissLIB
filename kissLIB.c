@@ -1249,20 +1249,7 @@ int32_t kiss_send_command(kiss_instance_t *const kiss, uint16_t command)
 
 
 
-int32_t kiss_send_large_data(kiss_instance_t *const kiss, const uint8_t *const data, size_t length, uint8_t header)
-{
-    if(NULL == kiss || NULL == data || 0 == length)
-    {
-        return KISS_ERR_INVALID_PARAMS;
-    }
 
-
-
-    
-
-
-    return KISS_OK;
-}
 
 
 
