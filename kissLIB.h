@@ -73,6 +73,7 @@ extern "C" {
  */
 #define KISS_STATUS_NOTHING 0x00           // No frame activity
 #define KISS_STATUS_TRANSMITTING 0x01      // Frame is ready to be transmitted
+#define KISS_STATUS_ENCODED 0x07    
 #define KISS_STATUS_TRANSMITTED 0x02       // Frame has been transmitted
 #define KISS_STATUS_RECEIVING 0x03         // Frame is ready to be received
 #define KISS_STATUS_RECEIVED 0x04          // Frame has been received
@@ -172,16 +173,21 @@ typedef int32_t (*kiss_read_fn)(kiss_instance_t *const kiss, uint8_t *const buff
 struct kiss_instance_t 
 {
     uint8_t *buffer; /**< user-provided working memory for encoding/decoding frames.  */
-    size_t buffer_size; /**< size of `buffer` in bytes. */
-    size_t index; /**< current length of meaningful data in `buffer`. */
+    uint8_t header; /**< KISS header byte for the current frame. */
     uint8_t TXdelay; /**<  transmit delay in uints 0-255 -> from 10 to 2550 ms.  */
-    kiss_write_fn write; /**< user transport write callback */
-    kiss_read_fn read; /**< user transport read callback */
     uint8_t Status; /**< current frame status (KISS_NOTHING, KISS_TRANSMITTING, etc). */
-    void *context; /**< context used in the write/read functions (for instance: context for UART, I2C, SPI, etc..) */
     uint8_t padding; /**< padding number is the number of FEND bytes to write before actually starting sending the frame. Typically used for synch */
     uint8_t CRC32; /**< flag for using crc32 or not. If you want to use CRC32 put it to 1, 0 otherwise */
     uint8_t frame_flag;
+
+    size_t buffer_size; /**< size of `buffer` in bytes. */
+    size_t index; /**< current length of meaningful data in `buffer`. */  
+
+    kiss_write_fn write; /**< user transport write callback */
+    kiss_read_fn read; /**< user transport read callback */    
+
+    void *context; /**< context used in the write/read functions (for instance: context for UART, I2C, SPI, etc..) */
+
 };
 
 
@@ -203,26 +209,33 @@ struct kiss_instance_t
 int32_t kiss_init(kiss_instance_t *const kiss, uint8_t *const buffer, size_t buffer_size, uint8_t TXdelay, kiss_write_fn write, kiss_read_fn read, void *const context, uint8_t padding, uint8_t crc32);
 
 
+
+/**
+ * @brief Set the KISS header byte for the current frame being built.
+ * @param kiss initialized instance.
+ * @param header KISS header byte to set (e.g. KISS_HEADER_DATA(port)).
+ * @return Any number of errors or KISS_OK(0) if everything went ok
+ */
+int32_t kiss_set_header(kiss_instance_t *const kiss, uint8_t header);
+
 /** 
- * @brief Encode `length` bytes from `data` into the instance working buffer.
+ * @brief Push `length` bytes from `data` into the instance working buffer.
  *  @param kiss initialized instance.
  *  @param data payload to encode.
  *  @param length payload length in bytes.
  *  @param header KISS header byte to use.
 * @return Any number of errors or KISS_OK(0) if everything went ok
  */
-int32_t kiss_encode(kiss_instance_t *const kiss, const uint8_t *const data, size_t length, uint8_t header);
+int32_t kiss_push_data(kiss_instance_t *const kiss, const uint8_t *const data, size_t length);
 
 
 
 /**
- * @brief push more data inside an already encoded payload
- * @param kiss kiss instance
- * @param data data to add at the end of the payload 
- * @param length size of the data to add, if all are added the value is not changed.
-* @return Any number of errors or KISS_OK(0) if everything went ok
+ * @brief Encode the buffer ready for transmission.
+ * @param kiss initialized instance with data pushed into the working buffer.
  */
-int32_t kiss_push_encode(kiss_instance_t *const kiss, const uint8_t *const data, size_t length);
+int32_t kiss_encode(kiss_instance_t *const kiss);
+
 
 
 
@@ -247,21 +260,6 @@ int32_t kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t o
 int32_t kiss_send_frame(kiss_instance_t *const kiss);
 
 
-
-
-
-/**
-* @brief Encode `length` bytes from `data` into the instance working buffer and send it.
-* @param kiss initialized instance.
-* @param data payload to encode.
-* @param length payload length in bytes.
-* @param header KISS header byte to use.
-* @retval KISS_OK(0) on success
-* @retval KISS_ERR_INVALID_PARAMS for bad inputs
-* @retval KISS_ERR_BUFFER_OVERFLOW if the provided working buffer is too small
-* @retval generic error code from kiss_send_frame on failure
-*/
-int32_t kiss_encode_and_send(kiss_instance_t *const kiss, const uint8_t *const data, size_t length, uint8_t header);
 
 
 
