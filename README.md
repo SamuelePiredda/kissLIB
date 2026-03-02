@@ -1,12 +1,24 @@
 # kissLIB
-small and portable KISS library written in C that can be used in any computer or embedded system. 
-It is a small and easy protocol which allows you to communicate with other devices using any physical layer.
+Small and portable KISS (Keep It Simple, Stupid) protocol library written in C, designed for embedded systems and computers.
+It provides a lightweight framing layer to communicate reliably between devices over any physical interface (UART, I2C, SPI, etc.).
 
+## Features
+- **Portable**: Written in standard C (C99), compliant with MISRA-C 2012 guidelines where possible.
+- **Agnostic**: Works with any physical layer by using user-defined callbacks.
+- **Framing**: Handles FEND/FESC escaping and unescaping transparently.
+- **CRC32**: Optional CRC32 integrity check.
+- **Control Frames**: Built-in support for ACK, NACK, PING, Commands, and Parameters.
 
+## Integration
 
-These are the two callback functions that the user must implement for writing and receiving, for whataver physical layer (I2C, UART etc..)
-``` C
+### 1. Define Hardware Callbacks
+Implement the read and write functions for your specific hardware.
+
+```C
+// Write callback: sends 'length' bytes from 'data' to the hardware
 typedef int32_t (*kiss_write_fn)(kiss_instance_t *const kiss, const uint8_t *const data, size_t length);
+
+// Read callback: reads up to 'dataLen' bytes into 'buffer', updating 'read' with the count
 typedef int32_t (*kiss_read_fn)(kiss_instance_t *const kiss, uint8_t *const buffer, 
                             size_t dataLen, size_t *const read);
 ```
@@ -18,19 +30,23 @@ This is the struct containing the instance of the kiss communication protocol: t
 ```C
 struct kiss_instance_t {
     uint8_t *buffer;
-    size_t buffer_size;
-    size_t index;
+    uint8_t header; 
     uint8_t TXdelay;
-    kiss_write_fn write;
-    kiss_read_fn read;
-    uint8_t Status;
-    void *context;
-    uint8_t padding;
+    uint8_t Status; 
+    uint8_t padding; 
+    uint8_t CRC32; 
+
+    size_t buffer_size; 
+    size_t index;  
+
+    kiss_write_fn write; 
+    kiss_read_fn read;    
+
+    void *context; 
 };
 ```
 
-The **buffer** pointer contains the buffer array that the user has created. This is done in order to allow user to use static or dynamic memory allocation as he wishes. The **buffer_size** contains the length of the buffer. The **index** parameter contains the length of the frame that is ready to be transmitted or that has been received, it should not be used by the user since all the kiss functions use it. The **TXdelay** is the delay between receiving and transmitting and it is a number between 0 and 255, (which should be multiply by 10 so it is a delay that ranges between 0 and 2550ms) this value is used by the user and it is never used by the library. The **write** and **read** functions are the callback functions that the user must code in order to transmit and receive from whatever physical link (please keep in mind that it is not a multi-point protocol so you need another layer on top if you want to use kiss for multi-point links e.g. CAN bus). The **Status** variable contains the current status of the kiss instance and should not be modified by the user, only read to be sure in what state the kiss intance is in. The **context** pointer is an extra pointer that the user can use pointing at useful structures (e.g. in HAL you can use UART_HandleTypeDef). The **padding** parameter is the amount of FEND byte to send before the real frame (it is a number between 0 and 32).
-
+The **buffer** pointer contains the buffer array that the user has created. This is done in order to allow user to use static or dynamic memory allocation as he wishes. The **buffer_size** contains the length of the buffer. The **index** parameter contains the length of the frame that is ready to be transmitted or that has been received, it should not be used by the user since all the kiss functions use it. The **TXdelay** is the delay between receiving and transmitting and it is a number between 0 and 255, (which should be multiply by 10 so it is a delay that ranges between 0 and 2550ms) this value is used by the user and it is never used by the library. The **write** and **read** functions are the callback functions that the user must code in order to transmit and receive from whatever physical link (please keep in mind that it is not a multi-point protocol so you need another layer on top if you want to use kiss for multi-point links e.g. CAN bus). The **Status** variable contains the current status of the kiss instance and should not be modified by the user, only read to be sure in what state the kiss intance is in. The **context** pointer is an extra pointer that the user can use pointing at useful structures (e.g. in HAL you can use UART_HandleTypeDef). The **padding** parameter is the amount of FEND byte to send before the real frame (it is a number between 0 and 32). The **header** parameter contains the header frame that must be transmitted or that it has been decoded.
 
 
 Start by creating the instance of kiss
@@ -40,11 +56,26 @@ kiss_instance_t kiss_i;
 
 Then call the initialization function with all the necessary parameters
 ```C
-int32_t kiss_init(kiss_instance_t *const kiss, uint8_t *const buffer, uint16_t buffer_size, 
-                uint8_t TXdelay, uint32_t BaudRate, kiss_write_fn write, 
-                kiss_read_fn read, void *const context, uint8_t padding);
+int32_t kiss_init(kiss_instance_t *const kiss, uint8_t *const buffer, size_t buffer_size, 
+                    uint8_t TXdelay, kiss_write_fn write, kiss_read_fn read, 
+                    void *const context, uint8_t padding, uint8_t crc32);
 ```
-Each kiss_instance_t use one buffer for input/output. This buffer allocation is done by the user which can select the right amount of bytes to allocate to it. You can use static allocation or dynamic allocation.
+Each kiss_instance_t use one buffer for input/output. This buffer allocation is done by the user which can select the right amount of bytes to allocate to it. Use static allocation.
+The CRC32 can be setted with '1' or the define **KISS_USE_CRC32**, use '0' or **KISS_NOTUSE_CRC32** if you don't want to add CRC32 at the end of the frame.
+Remember that each byte is 2 byte long potentially due to the special bytes FEND and FESC. This means that the maximum payload data is significally smaller respect to the maximum frame size which is calculated by taking into account that potentially, every byte is an escape character and needs two bytes. This is extremely safe but necessary in embedded systems to avoid any possible error. 
+The following table shows how many payload bytes can be fitted with and without CRC32:
+
+| Buffer size      | Payload bytes (no CRC) | Payload bytes (with CRC) |
+| -----------      | -----------            | -----------              |
+| 16          | 6                  | 2                         |
+| 32          | 14                   | 10                         |
+| 64          | 30                   | 26                         |
+| 128         | 62                   | 58                         |
+| 256         | 126                   | 122                         |
+| 512         | 254                   | 250                         |
+| 1024        | 510                   | 506                        |
+
+
 ```C
 const size_t len = 1024;
 uint8_t buffer_kiss[len];
