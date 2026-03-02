@@ -406,6 +406,10 @@ int32_t kiss_set_header(kiss_instance_t *const kiss, uint8_t header)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
+    if(KISS_FEND == header || KISS_FESC == header)
+    {
+        return KISS_ERR_HEADER_ESCAPE;
+    }
     /* setting the header in the variable */
     kiss->header = header;
 

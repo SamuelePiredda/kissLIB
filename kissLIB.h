@@ -368,15 +368,6 @@ int32_t kiss_send_command(kiss_instance_t *const kiss, uint16_t command);
 
 
 
-#ifdef KISS_DEBUG
-
-/* if the debug is active use this function to plot the kiss instance */
-void kiss_debug(kiss_instance_t *const kiss);
-
-
-#endif
-
-
 
 
 #ifdef __cplusplus
