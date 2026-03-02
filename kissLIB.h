@@ -111,19 +111,6 @@ extern "C" {
 
 
 
-/**
- * @brief Kiss flags used to look up if a special frame has arrived
- */
-/* no special case has arrived */
-#define KISS_FLAG_NONE 0x00
-/* ACK frame arrived */
-#define KISS_FLAG_ACK 0x01
-/* NACK frame arrived */
-#define KISS_FLAG_NACK 0x02
-/* PING frame arrived */
-#define KISS_FLAG_PING 0x03
-
-
 /* define for using CRC32 */
 #define KISS_USE_CRC32 1
 /* define for not using CRC32 */
@@ -178,7 +165,6 @@ struct kiss_instance_t
     uint8_t Status; /**< current frame status (KISS_NOTHING, KISS_TRANSMITTING, etc). */
     uint8_t padding; /**< padding number is the number of FEND bytes to write before actually starting sending the frame. Typically used for synch */
     uint8_t CRC32; /**< flag for using crc32 or not. If you want to use CRC32 put it to 1, 0 otherwise */
-    uint8_t frame_flag;
 
     size_t buffer_size; /**< size of `buffer` in bytes. */
     size_t index; /**< current length of meaningful data in `buffer`. */  
@@ -221,7 +207,7 @@ int32_t kiss_set_header(kiss_instance_t *const kiss, uint8_t header);
 /** 
  * @brief Push `length` bytes from `data` into the instance working buffer.
  *  @param kiss initialized instance.
- *  @param data payload to encode.
+ *  @param data payload to push in the package.
  *  @param length payload length in bytes.
  *  @param header KISS header byte to use.
 * @return Any number of errors or KISS_OK(0) if everything went ok
@@ -230,18 +216,10 @@ int32_t kiss_push_data(kiss_instance_t *const kiss, const uint8_t *const data, s
 
 
 
-/**
- * @brief Encode the buffer ready for transmission.
- * @param kiss initialized instance with data pushed into the working buffer.
- */
-int32_t kiss_encode(kiss_instance_t *const kiss);
-
-
-
 
 /** 
  * @brief Decode a frame stored in `kiss->buffer` into `output`.
-*  @param kiss instance containing an encoded frame and `kiss->index` set.
+*  @param kiss instance 
 *  @param output buffer to receive decoded payload bytes.
 *  @param output_max_size maximum size of the output buffer.
 *  @param output_length pointer to receive number of decoded bytes.
@@ -253,16 +231,12 @@ int32_t kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t o
 
 /** 
 * @brief Send an encoded frame over the transport using the `write` callback.
+* @param kiss current instance to work with
 * @retval KISS_OK(0) on success 
 * @retval KISS_ERR_INVALID_PARAMS if inputs are invalid
 * @retval generic error code from transport write function on failure
 */
 int32_t kiss_send_frame(kiss_instance_t *const kiss);
-
-
-
-
-
 
 
 
