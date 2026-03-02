@@ -66,7 +66,7 @@ Remember that each byte is 2 byte long potentially due to the special bytes FEND
 The following table shows how many payload bytes can be fitted with and without CRC32:
 
 | Buffer size      | Payload bytes (no CRC) | Payload bytes (with CRC) |
-| -----------      | -----------            | -----------              |
+| :-----------:      | :-----------:            | :-----------:              |
 | 16          | 6                  | 2                         |
 | 32          | 14                   | 10                         |
 | 64          | 30                   | 26                         |
@@ -80,28 +80,19 @@ The following table shows how many payload bytes can be fitted with and without 
 const size_t len = 1024;
 uint8_t buffer_kiss[len];
 ```
-If you plan to transmit packets that are X long, you have to create a buffer which is X + 2 (FEND) + 1 (header) + X (if you want to use CRC32 you need also to take into account +4 bytes for CRC32 at the end of the packet). This takes into account the worst case scenario when you have to transmit only special characters. For instance, if you want to transmit 256 bytes  per packet, please use at least 515 bytes as buffer, but in the example above 1024 bytes have been used in order to be in safe zone. If you use static allocation and you have buffer overflow you can't change the amount of memory allocated without changing the program.
+I suggest to use buffer size >= 128 bytes in order to have the best ratio payload bytes over buffer size and maximize the efficiency. In this example we have no RAM problem and we set a 1024 buffer size
 
 
-If you want to send data, use the encode function to encode the data previous to sending
+If you want to send data, use the *kiss_push_data* to push data inside the kiss buffer
 ```C
-int32_t kiss_encode(kiss_instance_t *const kiss, const uint8_t *const data, 
-                size_t length, uint8_t header);
+int32_t kiss_push_data(kiss_instance_t *const kiss, const uint8_t *const data, size_t length);
+```
+Before sending the frame remember to set the header of the frame using the *kiss_set_header* function.
+```C
+int32_t kiss_set_header(kiss_instance_t *const kiss, uint8_t header);
 ```
 
-If you want to add more data after you have used the kiss_encode function use this function here:
-```C
-int32_t kiss_push_encode(kiss_instance_t *const kiss, const uint8_t *const data, size_t length);
-```
-
-After you have received a frame use this function to decode the data 
-```C
-int32_t kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t output_max_size, 
-                size_t *const output_length, uint8_t *const header);
-
-```
-
-After the data that you want to send has been encoded use this function to send it
+After the data that you want to send has been pushed into the buffer, you can use *kiss_send_frame* function to send it
 ```C
 int32_t kiss_send_frame(kiss_instance_t *const kiss);
 ```
@@ -127,433 +118,32 @@ int32_t kiss_request_param(kiss_instance_t *const kiss, uint16_t ID, uint8_t *co
 int32_t kiss_send_command(kiss_instance_t *const kiss, uint16_t *command);
 ```
 
-To quickly encode and send or receive and decode use the following functions
-```C
-int32_t kiss_encode_and_send(kiss_instance_t *const kiss, const uint8_t *const data, 
-                        size_t length, uint8_t header);
-int32_t kiss_receive_and_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t output_max_size,
-                        size_t *const output_length, uint32_t maxAttempts, uint8_t *const header);
-```
-
-The following function extract the parameter ID (2 bytes) and parameter new value (**MAXIMUM 254 bytes**) from a set_param request:
-```C
-int32_t kiss_extract_param(kiss_instance_t *const kiss, uint16_t *const ID, uint8_t *const param, 
-                        size_t max_param_size, size_t *const param_length)
-```
-
-The following functions encode and decode the data with four more bytes for CRC32 at the end of the frame.
-```C
-int32_t kiss_decode_crc32(kiss_instance_t *const kiss, uint8_t *const output, 
-                    size_t *const output_length, uint8_t *const header);
-int32_t kiss_encode_crc32(kiss_instance_t *const kiss, const uint8_t *const data,
-                    size_t length, const uint8_t header);
-int32_t kiss_encode_send_crc32(kiss_instance_t *const kiss, const uint8_t *const data, 
-                    size_t length, uint8_t header)
-int32_t kiss_set_param_crc32(kiss_instance_t *const kiss, uint16_t ID, const uint8_t *const param, 
-                    size_t len);
-int32_t kiss_request_param_crc32(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const output, 
-                    size_t max_out_size, size_t *const output_length, uint32_t maxAttempts,
-                    uint8_t expected_header);
-int32_t kiss_send_command_crc32(kiss_instance_t *const kiss, uint16_t *command);
-```
-
-
-Add the **KISS_DEBUG** directive to have access to the function which prints out the instance for debug
- ```C
-void kiss_debug(kiss_instance_t *const kiss)
-```
-
-
-
-# How to implement the library, simple example
-
-This example guides you step-by-step through the library integration, from definiing the callbacks to transmitting and receiving data.
-
-
-You start by adding the include instruction, no other includes are required
-```C
-#include "kissLIB.h"
-```
-
-## 1. Define hardware callbacks
-
-First, tell the library how to send and read bytes from your hardware (e.g. UART, I2C etc..). Define two functions that match the kiss_write_fn and kiss_read_fn signatures.
-```C
-// Write callback example (TX)
-// sends 'length' bytes from 'data' to the hardware
-int32_t write_callback(kiss_instance_t *const kiss, const uint8_t *const data, size_t length)
-{
-    /* All code for sending bytes
-    * if you need specific object you can call kiss->context pointer object
-    * return a number not zero if there is an error otherwise return 0
-    */
-    return 0;
-}
-
-// Read callback example (RX)
-// Reads up to 'dataLen' bytes and stores them in 'buffer'
-// updates 'readBytes' with the actual number of bytes read.
-int32_t read_callback(kiss_instance_t *const kiss, uint8_t *const buffer, size_t dataLen, size_t *const readBytes)
-{
-    /* 
-    * All code for receiving bytes
-    * please put a maximum waiting time
-    * update readBytes to the real number of bytes read
-    */
-    return 0;
-}
-```
-
-## 2. Create the buffer and instance
-
-The library does not use dynamic memory allocation in order to avoid any memory leaks or bug. You must provide a "working buffer" that 
-the library will use to build packets (adding FEND, FESC, CRC, etc..)
+All the function return *KISS_OK* (0) if the operation is successful, otherwise they return a non zero value that is the error code. The error codes are defined as follows:
 
 ```C
-#define KISS_BUFFER_SIZE 1024
-
-// buffer and instance allocation
-uint8_t kiss_work_buffer[KISS_BUFFER_SIZE];
-kiss_instance_t my_kiss;
-// kiss errors will be allocated inside this variable
-int32_t kiss_err = KISS_OK;
+#define KISS_ERR_INVALID_PARAMS         1 /* the data passed to the function are not valid */
+#define KISS_ERR_INVALID_FRAME          2 /* the frame received is not valid */
+#define KISS_ERR_BUFFER_OVERFLOW        3 /* the data to send is too big for the buffer */
+#define KISS_ERR_NO_DATA_RECEIVED       4 /* no data has been received within the maxAttempts */
+#define KISS_ERR_DATA_NOT_ENCODED       5 /* the data received is not properly encoded */
+#define KISS_ERR_CRC32_MISMATCH         6 /* the CRC32 of the received frame does not match the CRC32 locally calcualated */
+#define KISS_ERR_CALLBACK_MISSING       7 /* the write or read callback function are missing, cannot read or write from the physical layer */
+#define KISS_ERR_HEADER_ESCAPE          8 /* the header byte is an escape charachter and it cannot be used as a header */
+#define KISS_ERR_STATUS                 9 /* the kiss instance is in an error status */
+#define KISS_ERR_PADDING_OVERFLOW       10 /* the padding value is too big, it must be between 0 and 32 */
 ```
 
+By changing the kiss instance CRC32 parameter all the functions will automatically use or not use the CRC32 so you can decide to use it or not on a frame by frame basis. The same thing applies for the padding parameter, you can change it at any time and the next frame will be sent with the new padding value.
 
-## 3. Initialization
-
-Call **kiss_init** to configure the instance with the buffer and callbacks defined in step 1.
-
+The list of the predefined headers are the following:
 ```C
-kiss_err = kiss_init(&my_kiss,
-                     kiss_work_buffer,  // buffer allocated
-                     KISS_BUFFER_SIZE,  // its size
-                     1,                 // TX delay (1 = 10ms)
-                     write_callback,    // write callback function
-                     read_callback,     // read callback function
-                     NULL,              // context (optional, useful for HAL drivers)
-                     0                  // padding (usually 0)
-                    );
-if(kiss_err != KISS_OK)
-{
-    /* error handling */
-}
+#define KISS_HEADER_DATA(port)      ((uint8_t)(port & 0x0F)) /* header for data frame with port number from 0 to 15 */
+#define KISS_HEADER_TX_DELAY        0x10    /* header for setting the other device delay time */
+#define KISS_HEADER_SPEED           0x60    /* header for setting the link speed (better wait for an ACK before changing the baud rate) */
+#define KISS_HEADER_PING            0x80    /* header for ping frame */
+#define KISS_HEADER_ACK             0xA0    /* header for ack frame */
+#define KISS_HEADER_NACK            0xA5    /* header for nack frame */
+#define KISS_HEADER_REQUEST_PARAM   0x40    /* header for request parameter frame */
+#define KISS_HEADER_SET_PARAM       0x50    /* header for set parameter frame */
+#define KISS_HEADER_COMMAND         0x70    /* header for command frame */
 ```
-
-## 4. Sending data (encoding + sending)
-
-To send data, first encode the payload into the internal buffer (**kiss_encode**) and then physically send it (**kiss_send_frame**).
-
-
-```C
-char *msg = "Hello,World!";
-/* 1. encode the message into the internal buffer
-*  KISS_HEADER_DATA(0) indicates a data packet on port 0
-*/
-kiss_err = kiss_encode(&my_kiss, (uint8_t*)msg, strlen(msg), KISS_HEADER_DATA(0));
-if(kiss_err != KISS_OK)
-{
-    /* error handling */
-}
-
-/* sending the frame */
-kiss_err = kiss_send_frame(&my_kiss);
-if(kiss_err != KISS_OK)
-{
-    /* error handling */
-}
-```
-
-## 5. Receiving Data (Receive & Decode)
-
-When you are waiting for something to arrive you can use the **kiss_receive_frame** function. It reads
-the bytes via the callback, assembles the frame and make it ready for decoding.
-
-```C
-/* receiving buffer */
-uint8_t rx_buffer[KISS_BUFFER_SIZE];
-/* length of data received */
-size_t rx_len = 0;          
-/* header of the frame received */
-uint8_t rx_header;
-
-
-/* try to receive with a maximum attempts */
-kiss_err = kiss_receive_frame(&my_kiss, 1);
-
-if(KISS_OK == kiss_err)
-{
-    /* packet have been received */
-
-    /* decoding the message */
-    kiss_err = kiss_decode(&my_kiss, rx_buffer, KISS_BUFFER_SIZE, &rx_len, &rx_header);
-
-    if(kiss_err != KISS_OK)
-    {
-        /* error handling */
-    }
-    else
-    {
-        /* message has been received */
-        /* printing data just to show what has been received */
-        printf("Header:\t%02X\n", rx_header);
-        printf("Bytes received\n");
-        for(size_t i = 0; i < rx_len; i++)
-            printf("%02X ", rx_buffer[i]);
-        printf("\n---------\n");
-    }
-
-}
-else if(KISS_ERR_NO_DATA_RECEIVED == kiss_err)
-{
-    /* no data received */
-}
-else
-{
-    /* handling any other error */
-}
-```
-
-
-# Use cases for satellite
-
-Typically in Cubesats the OBC performs four actions to other devices:
-1. Send a command
-2. Set other device parameter
-3. Request other device parameter
-4. Send data to the other device (typically this is for large amount of data, such as sending data to the radio for downlink)
-
-This library has easy functions to work with for these four actions.
-
-## 1. Sending a command
-
-With this library you can send a command to the other device with one single function, without or with CRC32 verification.
-
-```C
-int32_t kiss_send_command(kiss_instance_t *const kiss, uint16_t *command);
-```
-This first function takes has parameters a kiss instance and the 2 bytes command to send. It encodes the data and send it. The header used is **KISS_HEADER_COMMAND** which can be used to the other device to quickly search if the data arrived is a command.
-For instance, if you want to turn off a channel for the Electrical Power Subsystem you can simply write:
-```C
-kiss_eps_err = kiss_send_command(&kiss_eps_i, EPS_CH1_TURN_OFF);
-```
-
-From the other end, the EPS will do something like this:
-
-```C
-
-kiss_obc_err = kiss_receive_frame(&kiss_obc_i, 1);
-
-if(KISS_OK == kiss_obc_err)
-{
-    /* decoding the message */
-    kiss_obc_err = kiss_decode(&kiss_obc_i, rx_buffer, KISS_BUFFER_SIZE, &rx_len, &rx_header);
-
-    if(kiss_obc_err != KISS_OK)
-    {
-        /* error handling */
-    }
-    else
-    {
-        /* message has been received */
-        if(KISS_HEADER_COMMAND == rx_header)
-        {
-            /* the command from array to uint16_t */
-            uint16_t cmd = (uint16_t)rx_buffer[0] | ( (uint16_t)(rx_buffer[1]) << 8 );
-            /* switch case with the command */
-            switch(cmd)
-            {
-                ....
-                case EPS_CH1_TURN_OFF:
-                    ....
-                    /* add a send_ack to inform the OBC that the command has been received and performed */
-                    break;
-                ....
-            }
-        }
-    }
-}
-
-```
-
-If you want to add CRC32 use the crc32 functions to add more safety if you expect a noisy channel with high bit error rate. (e.g. UART, I2C)
-
-## 2. Set other device parameter
-
-In this case we want to set a parameter of the other device. For example we would like to change the current limiter in the EPS for channel 3. The OBC has the following definitions:
-
-- EPS_PARAM_CH1_MAX_CURRENT 4325
-
-The function is the following:
-```C
-int32_t kiss_set_param(kiss_instance_t *const kiss, uint16_t ID, 
-                    const uint8_t *const param, size_t len);
-```
-
-The implementation example is the following:
-
-```C
-/* current limiting in mA, from 6000 to 1000 because we suspect the device in CH1 has some failures and sometimes draws too much current and reset */
-uint16_t curr_lim_ma = 1000;
-
-/* create a byte array from the uint16_t variable */
-uint8_t bs[2] = {(uint8_t)curr_lim_ma, (uint8_t)(curr_lim_ma >> 8)};
-kiss_eps_err = kiss_set_param(&kiss_eps_i, EPS_PARAM_CH1_MAX_CURRENT, bs, 2);
-
-/* Then you can maybe wait for an ack to know that the EPS has changed the parameter */
-```
-
-The header used for this echange is **KISS_HEADER_SET_PARAM**.
-
-From the other end, the EPS will do something like this:
-
-```C
-
-kiss_obc_err = kiss_receive_frame(&kiss_obc_i, 1);
-
-if(KISS_OK == kiss_obc_err)
-{
-    /* decoding the message */
-    kiss_obc_err = kiss_decode(&kiss_obc_i, rx_buffer, KISS_BUFFER_SIZE, &rx_len, &rx_header);
-
-    if(kiss_obc_err != KISS_OK)
-    {
-        /* error handling */
-    }
-    else
-    {
-        /* message has been received */
-        if(KISS_HEADER_SET_PARAM == rx_header)
-        {
-           /* ID container */
-           uint16_t ID = 0;
-           /* the value of the parameter, use 64 just for safety, but it will be a value of 1,2,4,8 bytes */
-           uint8_t value[64];
-           /* value length */
-           size_t value_len = 0;
-           /* extract the parameter */
-           kiss_obc_err = kiss_extract_param(&kiss_obc_i, &ID, value, 64, &value_len);
-
-           if(KISS_OK == kiss_obc_err)
-           {
-                /* switch case for the type of parameter change */
-                switch(ID)
-                {
-                    case CH1_CURR_LIM:
-                        if(value_len == 2)
-                        {
-                            /* new current limiting value */
-                            CH1_CUR_LIM = (uint16_t)(value[0]) | ((uint16_t)(value[1]) << 8);
-                        }
-                        else
-                        {
-                            /* handle the error */
-                        }
-                        break;
-                }
-           }
-
-        }
-    }
-}
-
-```
-
-You can also use the CRC32 versions.
-
-## 3. Request other device parameter
-
-
-We request a parameter from the device, for instance a temperature or battery voltage. The following function is used:
-```C
-int32_t kiss_request_param(kiss_instance_t *const kiss, uint16_t ID, uint8_t *const output, 
-                    size_t max_out_size, size_t *const output_length, uint32_t maxAttempts);
-```
-
-The implementation from the OBC that requests the battery voltage to the EPS is the following:
-```C
-uint8_t bs[2];
-size_t out_len;
-uint8_t header;
-/* it requests the battery voltage which is a uint16_t and contains the battery voltage in mV */
-kiss_eps_err = kiss_request_param(&kiss_eps_i, EPS_PARAM_BP_mV);
-if(kiss_eps_err != KISS_OK)
-{
-    /* handling error */
-}
-else
-{
-    kiss_eps_err = kiss_receive_and_decode(&kiss_eps_i, output, sizeof(output), &out_len, 1, &header);
-    if(kiss_eps_err != KISS_OK)
-    {
-        /* handling error */
-    }
-}
-/* now kiss_eps_err should be ok */
-if(KISS_OK == kiss_eps_err)
-{
-    if(out_len == 2)
-    {
-        /* update the telemetry */
-        EPS_BP_mV = (uint16_t)bs[0] || ((uint16_t)bs[1] << 8);
-    }
-    else
-    {
-        /* error management */
-    }
-}
-```
-
-The implementation from the EPS side will be:
-```C
-
-kiss_obc_err = kiss_receive_frame(&kiss_obc_i, 1);
-
-if(KISS_OK == kiss_obc_err)
-{
-    /* decoding the message */
-    kiss_obc_err = kiss_decode(&kiss_obc_i, rx_buffer, KISS_BUFFER_SIZE, &rx_len, &rx_header);
-
-    if(kiss_obc_err != KISS_OK)
-    {
-        /* error handling */
-    }
-    else
-    {
-        /* message has been received */
-        if(KISS_HEADER_REQUEST_PARAM == rx_header)
-        {
-           /* extract the parameter, but only the ID */
-           kiss_obc_err = kiss_extract_param(&kiss_obc_i, &ID, NULL, 0, NULL);
-
-           if(KISS_OK == kiss_obc_err)
-           {
-                /* switch case for the type of parameter change */
-                switch(ID)
-                {
-                    case VBAT_mV:
-                        /* the HEADER_DATA in port 0 is used to respond to request of parameters */
-                        kiss_obc_err = kiss_encode_and_send(&kiss_obc_i, (uint8_t*)&TEL_VBAT_mV, 2, KISS_HEADER_REQUEST_PARAM);
-                        if(kiss_obc_err != KISS_OK)
-                        {
-                            /* error handling */
-                        }
-                        break;
-                }
-           }
-
-        }
-    }
-}
-
-
-
-```
-
-
-
-You can also use the CRC32 versions.
-
-## 4. Send data to the other device
-
-Already looked at it, use the **KISS_HEADER_DATA** to know what type of data is arriving and where to store it or send it. The Most Significant Hex must be 0 to identify it is a data header, and the Least Significant Hex is a value from 0 to F (0-15) to identify where to store/send this data.
