@@ -26,8 +26,8 @@ extern "C" {
 
 #define KISS_LSB(x) ( (uint8_t)(x) )
 #define KISS_MSB(x) ( (uint8_t)((x) >> 8) )
-#define KISS_BYTE_TO_UINT16(b0, b1) ( (uint16_t)(b0) | ((uint16_t)(b1) << 8) )  
-#define KISS_BYTE_TO_UINT32(b0, b1, b2, b3) ( (uint32_t)(b0) | ((uint32_t)(b1) << 8) | ((uint32_t)(b2) << 16) | ((uint32_t)(b3) << 24))
+#define KISS_BYTE_TO_UINT16(b0) ( (uint16_t)(*(b0)) | ((uint16_t)(*((b0) + 1)) << 8) )  
+#define KISS_BYTE_TO_UINT32(b0) ( (uint32_t)(*(b0)) | ((uint32_t)(*((b0) + 1)) << 8) | ((uint32_t)(*((b0) + 2)) << 16) | ((uint32_t)(*((b0) + 3)) << 24))
 
 
 /** KISS protocol special byte values
