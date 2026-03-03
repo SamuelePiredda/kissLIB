@@ -20,6 +20,9 @@ extern "C" {
 
 
 
+#define KISS_BUF_LEN_FROM_PAY_LEN(x) ( x*2 + 2 + 2 )
+#define KISS_BUF_LEN_FROM_PAY_LEN_CRC(x) ( x*2 + 2 + 2 + 8 ) 
+
 
 #define KISS_LSB(x) ( (uint8_t)(x) )
 #define KISS_MSB(x) ( (uint8_t)((x) >> 8) )
@@ -226,7 +229,7 @@ int32_t kiss_push_data(kiss_instance_t *const kiss, const uint8_t *const data, s
 *  @param header optional pointer to receive the KISS header byte (may be NULL).
 * @return Any number of errors or KISS_OK(0) if everything went ok
 */
-int32_t kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t output_max_size, size_t *const output_length, uint8_t *const header);
+int32_t kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t output_max_size, size_t *const output_length);
 
 
 /** 
@@ -271,7 +274,7 @@ int32_t kiss_receive_frame(kiss_instance_t *const kiss, uint32_t maxAttempts);
 * @retval KISS_ERR_NO_DATA_RECEIVED if no complete frame is received within maxAttempts
 * @retval generic error code from transport read function on failure
 */
-int32_t kiss_receive_and_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t output_max_size, size_t *const output_length, uint32_t maxAttempts, uint8_t *const header);
+int32_t kiss_receive_and_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t output_max_size, size_t *const output_length, uint32_t maxAttempts);
 
 
 
