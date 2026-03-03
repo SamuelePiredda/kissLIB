@@ -385,7 +385,7 @@ int32_t kiss_push_data(kiss_instance_t *const kiss, const uint8_t *const data, s
     for(size_t i = 0; i < length; i++)
     {
         /* checking for buffer overflow */
-        if(kiss->index >= kiss->buffer_size)
+        if(kiss->index >= (kiss->buffer_size - (kiss->CRC32 == 0 ? 0 : 8)) )
         {
             return KISS_ERR_BUFFER_OVERFLOW;
         }
@@ -418,7 +418,7 @@ int32_t kiss_set_header(kiss_instance_t *const kiss, uint8_t header)
 
 
 
-int32_t kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t output_max_size, size_t *const output_length, uint8_t *const header)
+int32_t kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t output_max_size, size_t *const output_length)
 {
     /* check basic parameters */
     if (NULL == kiss || NULL == output || NULL == output_length)
@@ -486,10 +486,6 @@ int32_t kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t o
     }
 
     /* Header */
-    if (header != NULL) 
-    {
-        *header = val;
-    }
     kiss->header = val;
 
 
@@ -558,7 +554,7 @@ int32_t kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t o
         *output_length = payload_len;
 
         uint32_t calc_crc = 0;
-        calc_crc = kiss_crc32_push(header, 1, 0);
+        calc_crc = kiss_crc32_push(kiss->header, 1, 0);
         calc_crc = kiss_crc32_push(output, *output_length, calc_crc);
         calc_crc = ~calc_crc;
         // Verify the calculated CRC of the payload against the received one
@@ -750,7 +746,7 @@ int32_t kiss_receive_frame(kiss_instance_t *const kiss, uint32_t maxAttempts)
 
 
 
-int32_t kiss_receive_and_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t output_max_size, size_t *const output_length, uint32_t maxAttempts, uint8_t *const header)
+int32_t kiss_receive_and_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t output_max_size, size_t *const output_length, uint32_t maxAttempts)
 {
     /* check for parameters errors */
     if(NULL == kiss || 0 == kiss->buffer_size || NULL == output || NULL == output_length || 0 == maxAttempts)
@@ -768,7 +764,7 @@ int32_t kiss_receive_and_decode(kiss_instance_t *const kiss, uint8_t *const outp
         return err;
     }
     /* decode the frame and return the output status */
-    return kiss_decode(kiss, output, output_max_size, output_length, header);
+    return kiss_decode(kiss, output, output_max_size, output_length);
 }
 
 
