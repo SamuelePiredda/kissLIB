@@ -19,7 +19,7 @@ extern "C" {
 
 
 
-
+/* This defines returns the number of bytes the buffer must be in order to have x bytes of payload */
 #define KISS_BUF_LEN_FROM_PAY_LEN(x) ( x*2 + 2 + 2 )
 #define KISS_BUF_LEN_FROM_PAY_LEN_CRC(x) ( x*2 + 2 + 2 + 8 ) 
 

@@ -554,7 +554,7 @@ int32_t kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t o
         *output_length = payload_len;
 
         uint32_t calc_crc = 0;
-        calc_crc = kiss_crc32_push(kiss->header, 1, 0);
+        calc_crc = kiss_crc32_push((uint8_t*)&kiss->header, 1, 0);
         calc_crc = kiss_crc32_push(output, *output_length, calc_crc);
         calc_crc = ~calc_crc;
         // Verify the calculated CRC of the payload against the received one
