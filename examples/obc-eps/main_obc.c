@@ -10,6 +10,15 @@
 #include "kissLIB.h"
 
 
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+
+typedef int8_t i8;
+typedef int16_t i16;
+typedef int32_t i32;
+
+
 
 /* Write function for KISS framing */
 int32_t write(kiss_instance_t *const kiss, const uint8_t *const data, size_t dataLen)
@@ -56,7 +65,7 @@ int32_t read(kiss_instance_t *const kiss, uint8_t *const buffer, size_t dataLen,
 }
 
 /* function to print the main menu and take a command as input */
-void printMenu(int *const command)
+void printMenu(i32 *const command)
 {
     system("cls");
     printf("1. Reset EPS data\n");
@@ -118,7 +127,7 @@ int main()
     int kiss_err_eps = 0;
 
     // Initialize KISS instance
-    kiss_err_eps = kiss_init(&kiss_eps_i, buffer, sizeof(buffer), 100, write, read, &maxR, 0);
+    kiss_err_eps = kiss_init(&kiss_eps_i, buffer, sizeof(buffer), 100, write, read, &maxR, 0, KISS_NOTUSE_CRC32);
     /* failed to initialized the kiss instance */
     if (kiss_err_eps != KISS_OK)
     {
@@ -159,7 +168,7 @@ int main()
             case 2:
                 /* new string */
                 printf("New string: ");
-                int c;
+                i32 c;
                 /* clean the input buffer */
                 while ((c = getchar()) != '\n' && c != EOF);
                 /* initialize or reset the data array */
@@ -167,13 +176,13 @@ int main()
                     data[i] = 0;
                 
                 /* gets the string */
-                fgets(data, 128, stdin);
+                fgets(data, 30, stdin);
                 /* if we have some data */
                 if(data != NULL)
                 {
-
+                    kiss_set_header(&kiss_eps_i, KISS_HEADER_DATA(5));
                     /* we encode and send the string at the data port 5*/
-                    kiss_err_eps = kiss_encode_and_send(&kiss_eps_i, data, strlen(data), KISS_HEADER_DATA(5));
+                    kiss_err_eps = kiss_push_data(&kiss_eps_i, data, strlen(data));
 
                     /* if we had an error */
                     if(kiss_err_eps != KISS_OK)
@@ -192,7 +201,7 @@ int main()
             /* case 3 we ask for a specific param */
             case 3:
                 /* selecting the parameter */
-                uint16_t param_id = selectParam();
+                u16 param_id = selectParam();
 
                 /* if the parameter doesn't exist we just exit */
                 if(param_id != 1 && param_id != 2 && param_id != 3 && param_id != 4)
@@ -205,8 +214,9 @@ int main()
                 /* if the REAL CASE SCENARIO we should wait for the package to arrive but here we don't */
                 if(kiss_err_eps == KISS_OK)
                 {
+                    size_t lenOutput = 0;
                     /* receive and decode the parameter*/
-                    kiss_err_eps = kiss_receive_frame(&kiss_eps_i, 1);
+                    kiss_err_eps = kiss_receive_and_decode(&kiss_eps_i, output, sizeof(output), &lenOutput, 1);
                     /* in case of errors */
                     if(kiss_err_eps != KISS_OK)
                     {
@@ -215,11 +225,9 @@ int main()
                     }
 
                     /* ID and value of the parameter that we received */
-                    uint16_t id;
-                    uint8_t value[8];
+                    u16 id = KISS_BYTE_TO_UINT16(output);
+                    u8 value[8];
 
-                    /* extract parameter and value */
-                    kiss_err_eps = kiss_extract_param(&kiss_eps_i, &id, value, 8, &len);
 
                     /* error handling */
                     if(kiss_err_eps != KISS_OK)

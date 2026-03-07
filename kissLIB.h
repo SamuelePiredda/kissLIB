@@ -112,6 +112,23 @@ extern "C" {
 #define KISS_HEADER_COMMAND 0x70
 
 
+/** in case you are using a multipoint bus (e.g. CAN) a simple change in the header
+* can change the protocol from point-to-point to multipoint.
+* The MSB of the header becomes the header it self (0-15 possible headers)
+* The LSB of the header becomes the address of the device (16 max devices)
+* You cannot use a lot of addresses but many applications have less than 16 addresses
+*/
+#define KISS_HEADER_MP_DATA(addr) (0x00 | ((addr) & 0x0F))
+#define KISS_HEADER_MP_TX_DELAY(addr) (0x10 | ((addr) & 0x0F))
+#define KISS_HEADER_MP_SPEED(addr) (0x60 | ((addr) & 0x0F))
+#define KISS_HEADER_MP_PING(addr) (0x80 | ((addr) & 0x0F))
+#define KISS_HEADER_MP_ACK(addr) (0xA0 | ((addr) & 0x0F))
+#define KISS_HEADER_MP_NACK(addr) (0xA5 | ((addr) & 0x0F))
+#define KISS_HEADER_MP_REQUEST_PARAM(addr) (0x40 | ((addr) & 0x0F))
+#define KISS_HEADER_MP_SET_PARAM(addr) (0x50 | ((addr) & 0x0F))
+#define KISS_HEADER_MP_COMMAND(addr) (0x70 | ((addr) & 0x0F))
+
+
 
 
 /* define for using CRC32 */
