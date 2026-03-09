@@ -937,11 +937,6 @@ int32_t kiss_set_param(kiss_instance_t *const kiss, uint16_t ID, const uint8_t *
     {
         return KISS_ERR_INVALID_PARAMS;
     }
-    /* check if buffer size is large enough */
-    if(kiss->buffer_size < (6 + 2*len + (kiss->CRC32 == 0 ? 0 : 8))) 
-    {
-        return KISS_ERR_BUFFER_OVERFLOW;
-    }
 
     /* error container */
     int32_t err = KISS_OK;
