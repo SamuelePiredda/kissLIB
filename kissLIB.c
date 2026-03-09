@@ -240,12 +240,29 @@ static int32_t kiss_encode(kiss_instance_t *const kiss)
         kiss->index = 4;
     }
 
+    int32_t err = KISS_OK;
+
     /* if we need to include CRC32 we do it before encoding */
     if(KISS_USE_CRC32 == kiss->CRC32)
     {
-        uint32_t crc = kiss_crc32(kiss);
-        crc = ~crc; 
-        kiss_push_data(kiss, (uint8_t*)&crc, 4);
+        if(kiss->index <= kiss->buffer_size - 8)
+        {
+            uint32_t crc = kiss_crc32(kiss);
+            crc = ~crc; 
+            uint8_t *crc_b = (uint8_t*) &crc;
+            kiss->buffer[kiss->index] = crc_b[0];
+            kiss->index += 2;
+            kiss->buffer[kiss->index] = crc_b[1];
+            kiss->index += 2;
+            kiss->buffer[kiss->index] = crc_b[2];
+            kiss->index += 2;
+            kiss->buffer[kiss->index] = crc_b[3];
+            kiss->index += 2;
+        }
+        else
+        {
+            return KISS_ERR_BUFFER_OVERFLOW;
+        }
     }
 
     /* encode everything */
@@ -417,11 +434,10 @@ int32_t kiss_set_header(kiss_instance_t *const kiss, uint8_t header)
 }
 
 
-
-int32_t kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t output_max_size, size_t *const output_length)
+int32_t kiss_decode(kiss_instance_t *const kiss)
 {
     /* check basic parameters */
-    if (NULL == kiss || NULL == output || NULL == output_length)
+    if (NULL == kiss)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
@@ -431,10 +447,11 @@ int32_t kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t o
     }
 
     /* pointers for fast access */
+    const uint8_t *src_const = kiss->buffer;
     const uint8_t *src = kiss->buffer;
     const uint8_t *src_end = kiss->buffer + kiss->index;
-    uint8_t *dst = output;
-    const uint8_t *dst_end = output + output_max_size;
+    uint8_t *dst = kiss->buffer;
+    const uint8_t *dst_end = kiss->buffer + kiss->buffer_size;
 
     /* fast skip for padding */
     while (src < src_end && KISS_FEND == *src)
@@ -445,7 +462,7 @@ int32_t kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t o
     /* if buffer ended with only FEND */
     if (src >= src_end) 
     {
-        *output_length = 0;
+        kiss->index = 0;
         kiss->Status = KISS_STATUS_ERROR_STATE;
         return KISS_ERR_INVALID_FRAME; 
     }
@@ -481,7 +498,7 @@ int32_t kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t o
     /* if we find another FEND it means there is no payload, it is ok */
     else if (KISS_FEND == val)
     {
-         *output_length = 0;
+         kiss->index = 0;
          return KISS_OK; 
     }
 
@@ -540,22 +557,22 @@ int32_t kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t o
     }
 
     /* final length read */
-    *output_length = (size_t)(dst - output);
+    kiss->index = (size_t)(dst - src_const);
 
 
     if(kiss->CRC32 != 0)
     {
         // Extract the received CRC (the last 4 bytes of the decoded payload)
-        size_t payload_len = *output_length - 4;
-        uint32_t received_crc = (uint32_t)output[payload_len] |
-                                ((uint32_t)output[payload_len + 1] << 8) |
-                                ((uint32_t)output[payload_len + 2] << 16) |
-                                ((uint32_t)output[payload_len + 3] << 24);
-        *output_length = payload_len;
+        size_t payload_len = kiss->index - 4;
+        uint32_t received_crc = (uint32_t)kiss->buffer[payload_len] |
+                                ((uint32_t)kiss->buffer[payload_len + 1] << 8) |
+                                ((uint32_t)kiss->buffer[payload_len + 2] << 16) |
+                                ((uint32_t)kiss->buffer[payload_len + 3] << 24);
+        kiss->index = payload_len;
 
         uint32_t calc_crc = 0;
         calc_crc = kiss_crc32_push((uint8_t*)&kiss->header, 1, 0);
-        calc_crc = kiss_crc32_push(output, *output_length, calc_crc);
+        calc_crc = kiss_crc32_push(kiss->buffer, kiss->index, calc_crc);
         calc_crc = ~calc_crc;
         // Verify the calculated CRC of the payload against the received one
         if (calc_crc != received_crc)
@@ -746,10 +763,10 @@ int32_t kiss_receive_frame(kiss_instance_t *const kiss, uint32_t maxAttempts)
 
 
 
-int32_t kiss_receive_and_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t output_max_size, size_t *const output_length, uint32_t maxAttempts)
+int32_t kiss_receive_and_decode(kiss_instance_t *const kiss, uint32_t maxAttempts)
 {
     /* check for parameters errors */
-    if(NULL == kiss || 0 == kiss->buffer_size || NULL == output || NULL == output_length || 0 == maxAttempts)
+    if(NULL == kiss || 0 == kiss->buffer_size  || 0 == maxAttempts)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
@@ -764,7 +781,7 @@ int32_t kiss_receive_and_decode(kiss_instance_t *const kiss, uint8_t *const outp
         return err;
     }
     /* decode the frame and return the output status */
-    return kiss_decode(kiss, output, output_max_size, output_length);
+    return kiss_decode(kiss);
 }
 
 

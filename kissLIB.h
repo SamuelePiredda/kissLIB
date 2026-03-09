@@ -18,7 +18,6 @@ extern "C" {
 */
 
 
-
 /* This defines returns the number of bytes the buffer must be in order to have x bytes of payload */
 #define KISS_BUF_LEN_FROM_PAY_LEN(x) ( x*2 + 2 + 2 )
 #define KISS_BUF_LEN_FROM_PAY_LEN_CRC(x) ( x*2 + 2 + 2 + 8 ) 
@@ -238,15 +237,11 @@ int32_t kiss_push_data(kiss_instance_t *const kiss, const uint8_t *const data, s
 
 
 /** 
- * @brief Decode a frame stored in `kiss->buffer` into `output`.
+ * @brief Decode a frame stored in 'kiss->buffer' inside the 'kiss->buffer' itself.
 *  @param kiss instance 
-*  @param output buffer to receive decoded payload bytes.
-*  @param output_max_size maximum size of the output buffer.
-*  @param output_length pointer to receive number of decoded bytes.
-*  @param header optional pointer to receive the KISS header byte (may be NULL).
 * @return Any number of errors or KISS_OK(0) if everything went ok
 */
-int32_t kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t output_max_size, size_t *const output_length);
+int32_t kiss_decode(kiss_instance_t *const kiss);
 
 
 /** 
@@ -278,11 +273,7 @@ int32_t kiss_receive_frame(kiss_instance_t *const kiss, uint32_t maxAttempts);
 /** 
 * @brief Receive a KISS frame and decode it into `output`.
 *  @param kiss instance with working buffer and `read` callback.
-*  @param output buffer to receive decoded payload bytes.
-*  @param output_max_size maximum size of the output buffer
-*  @param output_length pointer to receive number of decoded bytes.
 *  @param maxAttempts maximum number of read attempts before giving up.
-*  @param header optional pointer to receive the KISS header byte (may be NULL).
 * @returns an error or KISS_OK(0) if everything went ok
 * @retval 0 on success
 * @retval KISS_ERR_INVALID_PARAMS for bad inputs
@@ -291,7 +282,7 @@ int32_t kiss_receive_frame(kiss_instance_t *const kiss, uint32_t maxAttempts);
 * @retval KISS_ERR_NO_DATA_RECEIVED if no complete frame is received within maxAttempts
 * @retval generic error code from transport read function on failure
 */
-int32_t kiss_receive_and_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t output_max_size, size_t *const output_length, uint32_t maxAttempts);
+int32_t kiss_receive_and_decode(kiss_instance_t *const kiss, uint32_t maxAttempts);
 
 
 
