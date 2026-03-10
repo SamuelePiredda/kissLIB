@@ -188,7 +188,8 @@ static uint32_t kiss_crc32(kiss_instance_t *const kiss)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
-    if(kiss->index < 2)
+    /* you can't add a CRC32 if there is no header at least */
+    if(kiss->index < 4)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
@@ -232,6 +233,11 @@ static int32_t kiss_encode(kiss_instance_t *const kiss)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
+    /* kiss buffer size should be at least 4 byte long (for header). [C0, 00, HH, C0]*/
+    if(kiss->buffer_size < 3)
+    {
+        return KISS_ERR_BUFFER_OVERFLOW;
+    }
 
     /* putting the header just to be sure */
     kiss->buffer[2] = kiss->header;
@@ -239,8 +245,6 @@ static int32_t kiss_encode(kiss_instance_t *const kiss)
     {
         kiss->index = 4;
     }
-
-    int32_t err = KISS_OK;
 
     /* if we need to include CRC32 we do it before encoding */
     if(KISS_USE_CRC32 == kiss->CRC32)
@@ -337,7 +341,7 @@ static int32_t kiss_encode(kiss_instance_t *const kiss)
 
 int32_t kiss_init(kiss_instance_t *const kiss, uint8_t *const buffer, size_t buffer_size, uint8_t tx_delay, kiss_write_fn write, kiss_read_fn read, void *const context, uint8_t padding, uint8_t crc32)
 {
-    if (NULL == kiss || 0 == buffer_size || NULL == buffer)
+    if (NULL == kiss || NULL == buffer)
     {
         return KISS_ERR_INVALID_PARAMS;
     }
@@ -360,13 +364,14 @@ int32_t kiss_init(kiss_instance_t *const kiss, uint8_t *const buffer, size_t buf
     kiss->read = read;
     kiss->Status = KISS_STATUS_NOTHING;
     kiss->padding = padding;
+
     if(0 == crc32)
     {
-        kiss->CRC32 = 0;
+        kiss->CRC32 = KISS_NOTUSE_CRC32;
     }
     else
     {
-        kiss->CRC32 = 1;
+        kiss->CRC32 = KISS_USE_CRC32;
     }
 
 
@@ -380,9 +385,13 @@ int32_t kiss_init(kiss_instance_t *const kiss, uint8_t *const buffer, size_t buf
 int32_t kiss_push_data(kiss_instance_t *const kiss, const uint8_t *const data, size_t length)
 {
     /* check for parameters error or size of the buffer too small for the payload */
-    if(NULL == kiss || NULL == kiss->buffer)
+    if(NULL == kiss || NULL == kiss->buffer || 0 == length)
     {
         return KISS_ERR_INVALID_PARAMS;
+    }
+    if(kiss->index >= kiss->buffer_size)
+    {
+        return KISS_ERR_BUFFER_OVERFLOW;
     }
 
     /* if we never transmitted if we start from zero index */
