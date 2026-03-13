@@ -18,6 +18,7 @@ extern "C" {
 */
 
 
+
 /* This defines returns the number of bytes the buffer must be in order to have x bytes of payload */
 #define KISS_BUF_LEN_FROM_PAY_LEN(x) ( x*2 + 2 + 2 )
 #define KISS_BUF_LEN_FROM_PAY_LEN_CRC(x) ( x*2 + 2 + 2 + 8 ) 
@@ -109,23 +110,6 @@ extern "C" {
 #define KISS_HEADER_REQUEST_PARAM 0x40
 #define KISS_HEADER_SET_PARAM 0x50
 #define KISS_HEADER_COMMAND 0x70
-
-
-/** in case you are using a multipoint bus (e.g. CAN) a simple change in the header
-* can change the protocol from point-to-point to multipoint.
-* The MSB of the header becomes the header it self (0-15 possible headers)
-* The LSB of the header becomes the address of the device (16 max devices)
-* You cannot use a lot of addresses but many applications have less than 16 addresses
-*/
-#define KISS_HEADER_MP_DATA(addr) (0x00 | ((addr) & 0x0F))
-#define KISS_HEADER_MP_TX_DELAY(addr) (0x10 | ((addr) & 0x0F))
-#define KISS_HEADER_MP_SPEED(addr) (0x60 | ((addr) & 0x0F))
-#define KISS_HEADER_MP_PING(addr) (0x80 | ((addr) & 0x0F))
-#define KISS_HEADER_MP_ACK(addr) (0xA0 | ((addr) & 0x0F))
-#define KISS_HEADER_MP_NACK(addr) (0xA5 | ((addr) & 0x0F))
-#define KISS_HEADER_MP_REQUEST_PARAM(addr) (0x40 | ((addr) & 0x0F))
-#define KISS_HEADER_MP_SET_PARAM(addr) (0x50 | ((addr) & 0x0F))
-#define KISS_HEADER_MP_COMMAND(addr) (0x70 | ((addr) & 0x0F))
 
 
 
@@ -237,11 +221,15 @@ int32_t kiss_push_data(kiss_instance_t *const kiss, const uint8_t *const data, s
 
 
 /** 
- * @brief Decode a frame stored in 'kiss->buffer' inside the 'kiss->buffer' itself.
+ * @brief Decode a frame stored in `kiss->buffer` into `output`.
 *  @param kiss instance 
+*  @param output buffer to receive decoded payload bytes.
+*  @param output_max_size maximum size of the output buffer.
+*  @param output_length pointer to receive number of decoded bytes.
+*  @param header optional pointer to receive the KISS header byte (may be NULL).
 * @return Any number of errors or KISS_OK(0) if everything went ok
 */
-int32_t kiss_decode(kiss_instance_t *const kiss);
+int32_t kiss_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t output_max_size, size_t *const output_length);
 
 
 /** 
@@ -273,7 +261,11 @@ int32_t kiss_receive_frame(kiss_instance_t *const kiss, uint32_t maxAttempts);
 /** 
 * @brief Receive a KISS frame and decode it into `output`.
 *  @param kiss instance with working buffer and `read` callback.
+*  @param output buffer to receive decoded payload bytes.
+*  @param output_max_size maximum size of the output buffer
+*  @param output_length pointer to receive number of decoded bytes.
 *  @param maxAttempts maximum number of read attempts before giving up.
+*  @param header optional pointer to receive the KISS header byte (may be NULL).
 * @returns an error or KISS_OK(0) if everything went ok
 * @retval 0 on success
 * @retval KISS_ERR_INVALID_PARAMS for bad inputs
@@ -282,7 +274,7 @@ int32_t kiss_receive_frame(kiss_instance_t *const kiss, uint32_t maxAttempts);
 * @retval KISS_ERR_NO_DATA_RECEIVED if no complete frame is received within maxAttempts
 * @retval generic error code from transport read function on failure
 */
-int32_t kiss_receive_and_decode(kiss_instance_t *const kiss, uint32_t maxAttempts);
+int32_t kiss_receive_and_decode(kiss_instance_t *const kiss, uint8_t *const output, size_t output_max_size, size_t *const output_length, uint32_t maxAttempts);
 
 
 

@@ -9,10 +9,20 @@
 #include "kissLIB.h"
 
 
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+
+typedef int8_t i8;
+typedef int16_t i16;
+typedef int32_t i32;
+
+
+
 /* * Callback function for KISS framing transmission.
  * This simulates a physical TX channel by writing data to a local file.
  */
-int32_t write(kiss_instance_t *const kiss, const uint8_t *const data, size_t dataLen)
+int32_t write(kiss_instance_t *const kiss, const u8 *const data, size_t dataLen)
 {
     /* Simulate transmission latency by scaling the TXdelay parameter */
     Sleep(kiss->TXdelay*10);
@@ -34,10 +44,10 @@ int32_t write(kiss_instance_t *const kiss, const uint8_t *const data, size_t dat
 /* * Callback function for KISS framing reception.
  * Implements a "mailbox" system using a local file to simulate incoming data.
  */
-int32_t read(kiss_instance_t *const kiss, uint8_t *const buffer, size_t dataLen, size_t *const read)
+int32_t read(kiss_instance_t *const kiss, u8 *const buffer, size_t dataLen, size_t *const read)
 {
     FILE *f;
-    uint32_t i = 0;
+    u32 i = 0;
     do
     {
         /*
@@ -49,7 +59,7 @@ int32_t read(kiss_instance_t *const kiss, uint8_t *const buffer, size_t dataLen,
         Sleep(2);
         f = fopen("eps.txt", "rb");
     } 
-    while (NULL == f && i++ < *((uint32_t*)kiss->context));     
+    while (NULL == f && i++ < *((u32*)kiss->context));     
     
     if(NULL == f)
     {
@@ -69,9 +79,9 @@ int32_t read(kiss_instance_t *const kiss, uint8_t *const buffer, size_t dataLen,
 /* * Utility function to generate pseudo-random telemetry values.
  * Returns a value within the [low, up] inclusive range.
  */
-uint32_t rand_sens(uint32_t low, uint32_t up)
+u32 rand_sens(u32 low, u32 up)
 {
-    return low + (uint32_t)rand() % (up - low + 1);
+    return low + (u32)rand() % (up - low + 1);
 }
 
 int main()
@@ -80,27 +90,27 @@ int main()
      * These represent internal settings of the EPS that can be queried or modified.
      */
     #define PARAM1_ID 1
-    uint16_t PARAM1 = 10;
+    u16 PARAM1 = 10;
     #define PARAM2_ID 2
-    uint16_t PARAM2 = 15;
+    u16 PARAM2 = 15;
     #define PARAM3_ID 3
-    uint16_t PARAM3 = 20;
+    u16 PARAM3 = 20;
     #define PARAM4_ID 4
-    uint16_t PARAM4 = 25;
+    u16 PARAM4 = 25;
 
     /* * Sensor Simulation:
      * Dynamic values representing telemetry data (e.g., Voltage, Current, Temperature).
      */
     #define SENS1_ID 5
-    uint32_t SENS1 = 100;
+    u32 SENS1 = 100;
     #define SENS2_ID 6
-    uint32_t SENS2 = 1000;
+    u32 SENS2 = 1000;
     #define SENS3_ID 7
-    uint32_t SENS3 = 2000;
+    u32 SENS3 = 2000;
 
     /* General purpose data buffer for string storage */
     #define DATA_ID 8
-    char DATA[128];
+    char DATA[256];
 
     /* Timing variable to manage the 1Hz update rate */
     time_t last_time = time(NULL);
@@ -115,24 +125,24 @@ int main()
     kiss_instance_t kiss_obc_i;
 
     /* Set maximum retry count for the read callback synchronization */
-    uint32_t maxR = 10;
+    u32 maxR = 10;
 
-    int32_t kiss_obc_err = KISS_OK;
+    i32 kiss_obc_err = KISS_OK;
     #define MAX_BUFF 256
 
     /* * Internal KISS buffers:
      * buffer_obc: Used by the library for frame assembly/disassembly.
      * output_obc: Stores the decoded payload for the application layer.
      */
-    uint8_t buffer_obc[MAX_BUFF];
-    uint8_t output_obc[MAX_BUFF];
+    u8 buffer_obc[MAX_BUFF];
+    u8 output_obc[MAX_BUFF];
     size_t output_obc_len = 0;
-    uint8_t header_obc;
     
     /* * Instance Initialization:
      * Links the callbacks and sets up the internal workspace.
+     * Setting up the use of CRC32
      */
-    kiss_obc_err = kiss_init(&kiss_obc_i, buffer_obc, MAX_BUFF, 1, write, read, &maxR, 0);
+    kiss_obc_err = kiss_init(&kiss_obc_i, buffer_obc, MAX_BUFF, 1, write, read, &maxR, 0, KISS_NOTUSE_CRC32);
     if(kiss_obc_err != KISS_OK)
     {
         printf("Error init kiss instance\n");
@@ -140,7 +150,7 @@ int main()
     }
 
     /* Flag to force a UI refresh when new data arrives */
-    int update = 0;
+    i8 update = 0;
 
     /* --- Primary Execution Loop --- */
     while(1)
@@ -148,22 +158,37 @@ int main()
         /* * Attempt to fetch and parse a KISS frame.
          * The function returns KISS_OK only if a full valid frame is decoded.
          */
-        kiss_obc_err = kiss_receive_and_decode(&kiss_obc_i, output_obc, MAX_BUFF, &output_obc_len, 1, &header_obc);
+        kiss_obc_err = kiss_receive_and_decode(&kiss_obc_i, output_obc, MAX_BUFF, &output_obc_len, 1);
         
         if(KISS_OK == kiss_obc_err)
         {
             update = 1;
             /* Packet processing based on the KISS Protocol Header */
-            switch(header_obc)
+            switch(kiss_obc_i.header)
             {
                 case KISS_HEADER_COMMAND:
                     /* Convert the first two bytes of the payload into a 16-bit command ID */
-                    uint16_t cmd = KISS_BYTE_TO_UINT16(output_obc[0], output_obc[1]);
+                    u16 cmd = KISS_BYTE_TO_UINT16(output_obc);
+
                     switch(cmd)
                     {
                         case DATA_CMD_RESET:
                             /* Clear the internal data string */
                             strcpy(DATA, "");
+                            kiss_obc_err = kiss_send_ack(&kiss_obc_i);
+                            if(kiss_obc_err != KISS_OK)
+                            {
+                                printf("Error during sending ack\n");
+                                return kiss_obc_err;
+                            }
+                            break;
+                        default:
+                            kiss_obc_err = kiss_send_nack(&kiss_obc_i);
+                            if(kiss_obc_err != KISS_OK)
+                            {
+                                printf("Error during sending nack\n");
+                                return kiss_obc_err;
+                            }
                             break;
                     }
                     break;
@@ -179,47 +204,53 @@ int main()
                     snprintf(DATA, sizeof(DATA), "%s", output_obc);
                     /* Ensure null-termination even if snprintf reaches length limit */
                     DATA[output_obc_len] = '\0';
+
+                    kiss_obc_err = kiss_send_ack(&kiss_obc_i);
+                    if(kiss_obc_err != KISS_OK)
+                    {
+                        printf("Error during sending ack for data\n");
+                        return kiss_obc_err;
+                    }
                     break;
 
                 case KISS_HEADER_REQUEST_PARAM:
                     /* * Master requested the value of a specific parameter.
                      * Extract the ID from the received frame.
                      */
-                    uint16_t id = 0;
-                    kiss_extract_param(&kiss_obc_i, &id, NULL, 0, NULL);
-                    uint8_t *bs;
+                    u16 id = KISS_BYTE_TO_UINT16(output_obc);
+                    u8 *bs = output_obc + 2;
                     size_t len_bs = 0;
 
-                    uint8_t exit_all = 0;
+                    u8 exit_all = 0;
                     /* Map the ID to the local variable and split into bytes */
                     switch(id)
                     {
                         case PARAM1_ID:
-                            bs = (uint8_t*)&PARAM1;
+                            bs = (u8*)&PARAM1;
                             len_bs = 2;
                             break;
                         case PARAM2_ID:
-                            bs = (uint8_t*)&PARAM2;
+                            bs = (u8*)&PARAM2;
                             len_bs = 2;
                             break;
                         case PARAM3_ID:
-                            bs = (uint8_t*)&PARAM3;
+                            bs = (u8*)&PARAM3;
                             len_bs = 2;
                             break;
                         case PARAM4_ID:
-                            bs = (uint8_t*)&PARAM4;
+                            bs = (u8*)&PARAM4;
                             len_bs = 2;
                             break;     
                         case SENS1_ID:
-                            bs = (uint8_t*)&SENS1;
+                            bs = (u8*)&SENS1;
                             len_bs = 4;  
                             break;
                         case SENS2_ID:
-                            bs = (uint8_t*)&SENS2;
+                            bs = (u8*)&SENS2;
                             len_bs = 4;
                             break;
                         case SENS3_ID:
-                            bs = (uint8_t*)&SENS3;
+                            bs = (u8*)&SENS3;
                             len_bs = 4;
                             break;      
                         default:
@@ -238,22 +269,23 @@ int main()
                      * 2. Append (push) the actual parameter value.
                      * 3. Send the final encapsulated frame.
                      */
-                    kiss_obc_err = kiss_encode(&kiss_obc_i, (uint8_t *)&id, 2, KISS_HEADER_REQUEST_PARAM);
+
+                    kiss_set_header(&kiss_obc_i, KISS_HEADER_REQUEST_PARAM);
+
+                    kiss_obc_err = kiss_push_data(&kiss_obc_i, (u8 *)&id, 2);
                     if(kiss_obc_err != KISS_OK)
                     {
                         printf("Error encoding ID\n");
                         return 1;
                     }
                     
-                    kiss_obc_err = kiss_push_encode(&kiss_obc_i, bs, len_bs);
+                    kiss_obc_err = kiss_push_data(&kiss_obc_i, bs, len_bs);
                     if(kiss_obc_err != KISS_OK)
                     {
                         printf("Error push encoding value\n");
                         return 1;
                     }
                     
-                    /* Apply delay before sending to simulate hardware turnaround time */
-                    Sleep(kiss_obc_i.TXdelay*10);
                     kiss_obc_err = kiss_send_frame(&kiss_obc_i);
                     if(kiss_obc_err != KISS_OK)
                     {
@@ -266,12 +298,11 @@ int main()
                     /* * Master requested to update a parameter value.
                      * Extract both the ID and the new value from the frame.
                      */
-                    uint8_t value_b[8];
-                    size_t len = 0;
-                    kiss_obc_err = kiss_extract_param(&kiss_obc_i, &id, value_b, 8, &len);
-                    
+                    u8 value_b[8];
+                    id = KISS_BYTE_TO_UINT16(output_obc);
+
                     /* Reconstruct the 16-bit value from bytes */
-                    uint16_t value = KISS_BYTE_TO_UINT16(value_b[0], value_b[1]);
+                    u16 value = KISS_BYTE_TO_UINT16(value_b);
                     
                     /* Apply the change to the corresponding local variable */
                     switch(id)
